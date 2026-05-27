@@ -62,6 +62,12 @@ root
 - Vue.js
 - TypeScript
 
+## 🗄️ Banco de Dados
+
+- 📊 [Diagrama de relacionamentos interativo](https://dbdocs.io/embed/8f2c02d55edb2a59e72578b881f2feda/d1a76939bd1f47118f6143c10b193e67)
+- ✏️ [Editar schema no dbdiagram.io](https://dbdocs.io/arthurnazarethfalcao/DatabaseModelApplication/v/1?schema=public&view=table_structure) — senha: `projPOO`
+
+
 ## 🔐 Regras de Negócio
 
 - Pacotes de serviços com preços personalizados
