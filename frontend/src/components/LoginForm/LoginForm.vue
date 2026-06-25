@@ -6,9 +6,20 @@
   </div>
 
   <v-form @submit.prevent="handleLogin">
+    <v-alert
+      v-if="errorMessage"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+      rounded="lg"
+    >
+      {{ errorMessage }}
+    </v-alert>
+
     <v-text-field
-      v-model="username"
-      label="Usuário"
+      v-model="email"
+      label="E-mail"
+      type="email"
       prepend-inner-icon="mdi-account-outline"
       variant="outlined"
       class="mb-4"
@@ -61,29 +72,31 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '@/services/auth'
 
 defineOptions({
   name: 'LoginForm',
 })
 
 const router = useRouter()
-const username = ref('')
+const email = ref('')
 const password = ref('')
-const remember = ref(false)
 const showPassword = ref(false)
 const loading = ref(false)
+const errorMessage = ref('')
 
 const handleLogin = async () => {
   loading.value = true
+  errorMessage.value = ''
 
-  setTimeout(() => {
-    loading.value = false
-    console.log('Login payload:', {
-      username: username.value,
-      password: password.value,
-      remember: remember.value,
-    })
+  try {
+    const { accessToken } = await login({ email: email.value, password: password.value })
+    localStorage.setItem('accessToken', accessToken)
     router.push('/home')
-  }, 700)
+  } catch {
+    errorMessage.value = 'E-mail ou senha inválidos.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
