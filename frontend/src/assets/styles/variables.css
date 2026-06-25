@@ -1,0 +1,55 @@
+:root {
+  --color-black:       #111111;
+  --color-gold:        #C9A84C;
+  --color-off-white:   #F5F5F5;
+  --color-white:       #FFFFFF;
+
+  --color-black-soft:  #1F1F1F;
+  --color-black-muted: #2C2C2C;
+
+  --color-gold-light:  #E2C47A;
+  --color-gold-dark:   #A07A28;
+
+  --color-gray-100:    #F5F5F5;
+  --color-gray-200:    #E0E0E0;
+  --color-gray-400:    #9E9E9E;
+  --color-gray-600:    #616161;
+  --color-gray-800:    #424242;
+
+  --color-success:     #2E7D32;
+  --color-warning:     #F57C00;
+  --color-error:       #C62828;
+  --color-info:        #1565C0;
+
+  --bg-page:           var(--color-off-white);
+  --bg-surface:        var(--color-white);
+  --bg-dark:           var(--color-black);
+  --bg-dark-soft:      var(--color-black-soft);
+
+  --text-primary:      var(--color-black);
+  --text-on-dark:      var(--color-off-white);
+  --text-muted:        var(--color-gray-400);
+  --text-subtle:       var(--color-gray-600);
+  --text-accent:       var(--color-gold);
+
+  --border-default:    var(--color-gray-200);
+  --border-accent:     var(--color-gold);
+  --border-dark:       var(--color-black-muted);
+
+  --btn-bg:            var(--color-black);
+  --btn-text:          var(--color-white);
+  --btn-bg-hover:      var(--color-black-soft);
+
+  --btn-accent-bg:     var(--color-gold);
+  --btn-accent-text:   var(--color-black);
+  --btn-accent-hover:  var(--color-gold-light);
+
+  --input-bg:          var(--color-white);
+  --input-border:      var(--color-gray-200);
+  --input-border-focus:var(--color-gold);
+  --input-text:        var(--color-black);
+  --input-placeholder: var(--color-gray-400);
+
+  --brand-primary:     var(--color-gold);
+  --brand-bg:          var(--color-black);
+}

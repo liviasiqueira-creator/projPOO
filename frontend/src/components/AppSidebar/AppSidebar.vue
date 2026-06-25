@@ -4,13 +4,23 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-const items = [
-  { title: 'Option 1', icon: 'mdi-view-dashboard-outline', to: '/option-1' },
-  { title: 'Option 2', icon: 'mdi-calendar-outline', to: '/option-2' },
-  { title: 'Option 3', icon: 'mdi-wallet-outline', to: '/option-3' },
-  { title: 'Option 4', icon: 'mdi-history', to: '/option-4' },
-  { title: 'Option 5', icon: 'mdi-cog-outline', to: '/option-5' },
+const ownerItems = [
+  { title: 'Agendamentos', icon: 'mdi-calendar-clock-outline', to: '/dashboard/appointments' },
+  { title: 'Promoções', icon: 'mdi-tag-outline', to: '/dashboard/promotions' },
+  { title: 'Minha barbearia', icon: 'mdi-store-outline', to: '/dashboard/barbershop' },
 ]
+
+const generalItems = [
+  { title: 'Explorar', icon: 'mdi-grid-large', to: '/home' },
+]
+
+const clientItems = [
+  { title: 'Meus agendamentos', icon: 'mdi-calendar-outline', to: '/appointments' },
+  { title: 'Explorar barbearias', icon: 'mdi-grid-large', to: '/home' },
+]
+
+// TODO: substituir pelo store do usuário quando tiver autenticação
+const hasBarbershop = true
 
 const activePath = computed(() => route.path)
 </script>
@@ -18,43 +28,95 @@ const activePath = computed(() => route.path)
 <template>
   <v-navigation-drawer
     permanent
-    width="260"
+    width="220"
     class="app-sidebar"
     elevation="0"
   >
-    <div class="brand px-6 pt-6 pb-4">
-      <p class="text-h6 font-weight-bold">The Gent's Ledger</p>
+    <div class="app-sidebar__brand px-5 pt-5 pb-4">
+      <p class="app-sidebar__logo">---- decidir nome ou logo</p>
+      <p class="app-sidebar__sub text-caption">
+        {{ hasBarbershop ? 'Painel da barbearia' : 'Área do cliente' }}
+      </p>
     </div>
 
-    <v-list class="px-3" nav density="comfortable">
-      <v-list-item
-        v-for="item in items"
-        :key="item.to"
-        :to="item.to"
-        :active="activePath === item.to"
-        rounded="lg"
-        class="mb-1"
-      >
-        <template #prepend>
-          <v-icon :icon="item.icon" size="18" />
-        </template>
-        <v-list-item-title>{{ item.title }}</v-list-item-title>
-      </v-list-item>
-    </v-list>
+    <v-divider class="app-sidebar__divider" />
+
+    <template v-if="hasBarbershop">
+      <p class="app-sidebar__section-label px-5 pt-4 pb-1">Gestão</p>
+      <v-list class="px-3 pt-0" nav density="comfortable">
+        <v-list-item
+          v-for="item in ownerItems"
+          :key="item.to"
+          :to="item.to"
+          :active="activePath === item.to"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" size="17" />
+          </template>
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <p class="app-sidebar__section-label px-5 pt-2 pb-1">Geral</p>
+      <v-list class="px-3 pt-0" nav density="comfortable">
+        <v-list-item
+          v-for="item in generalItems"
+          :key="item.to"
+          :to="item.to"
+          :active="activePath === item.to"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" size="17" />
+          </template>
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </template>
+
+    <template v-else>
+      <p class="app-sidebar__section-label px-5 pt-4 pb-1">Menu</p>
+      <v-list class="px-3 pt-0" nav density="comfortable">
+        <v-list-item
+          v-for="item in clientItems"
+          :key="item.to"
+          :to="item.to"
+          :active="activePath === item.to"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" size="17" />
+          </template>
+          <v-list-item-title>{{ item.title }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </template>
 
     <template #append>
-      <div class="pa-3">
-        <v-card class="profile-card" rounded="lg" elevation="0">
-          <v-card-text class="d-flex align-center ga-3 py-3">
-            <v-avatar size="32" color="primary" variant="flat">
-              <span class="text-black text-caption font-weight-bold">A</span>
-            </v-avatar>
-            <div>
-              <p class="text-body-2 mb-0">Arthur Shelby</p>
-              <p class="text-caption text-medium-emphasis mb-0">Gold Member</p>
-            </div>
-          </v-card-text>
-        </v-card>
+      <v-divider class="app-sidebar__divider" />
+      <div class="app-sidebar__footer pa-3">
+        <div class="d-flex align-center ga-3">
+          <v-avatar size="32" color="primary" variant="flat">
+            <span class="app-sidebar__avatar-text">JC</span>
+          </v-avatar>
+          <div class="flex-1-1 overflow-hidden">
+            <p class="text-body-2 mb-0 text-truncate">João Carlos</p>
+            <p class="text-caption mb-0 app-sidebar__role">
+              {{ hasBarbershop ? 'Dono' : 'Cliente' }}
+            </p>
+          </div>
+          <v-btn
+            icon="mdi-logout"
+            size="x-small"
+            variant="text"
+            color="secondary"
+            aria-label="Sair"
+          />
+        </div>
       </div>
     </template>
   </v-navigation-drawer>
@@ -62,31 +124,77 @@ const activePath = computed(() => route.path)
 
 <style scoped>
 .app-sidebar {
-  border-right: 1px solid rgb(var(--v-theme-primary) / 0.18);
-  background:
-    linear-gradient(
-      180deg,
-      rgb(var(--v-theme-background)) 0%,
-      rgb(var(--v-theme-background)) 55%,
-      rgb(var(--v-theme-brown-dark) / 0.18) 100%
-    );
+  background: #111111 !important;
+  border-right: 0.5px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-.brand {
-  color: rgb(var(--v-theme-primary));
+.app-sidebar__brand {
+  line-height: 1;
 }
 
-.profile-card {
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-primary) / 0.18);
+.app-sidebar__logo {
+  color: #C9A84C;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.app-sidebar__sub {
+  color: #555555;
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+.app-sidebar__divider {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+.app-sidebar__section-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555555;
+  margin: 0;
+}
+
+.app-sidebar__footer {
+  padding: 12px;
+}
+
+.app-sidebar__avatar-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.app-sidebar__role {
+  color: #555555;
 }
 
 :deep(.v-list-item-title) {
-  font-size: 0.92rem;
+  font-size: 13px;
+  color: #888888;
+}
+
+:deep(.v-list-item__prepend .v-icon) {
+  color: #555555;
+}
+
+:deep(.v-list-item--active .v-list-item-title) {
+  color: #C9A84C;
+}
+
+:deep(.v-list-item--active .v-icon) {
+  color: #C9A84C;
 }
 
 :deep(.v-list-item--active) {
-  background: rgb(var(--v-theme-primary) / 0.2);
-  color: rgb(var(--v-theme-primary));
+  background: #1F1F1F !important;
+}
+
+:deep(.v-list-item:not(.v-list-item--active):hover) {
+  background: #1A1A1A !important;
 }
 </style>

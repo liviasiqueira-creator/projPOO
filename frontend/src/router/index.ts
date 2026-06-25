@@ -8,38 +8,22 @@ const router = createRouter({
       component: () => import('../pages/Layout'),
       children: [
         {
-          path: '',
-          redirect: '/option-1',
+          path: '/home',
+          name: 'Home',
+          component: () => import('../pages/Home'),
+          meta: { title: 'Barbearias' },
         },
         {
-          path: 'option-1',
-          name: 'option-1',
-          component: () => import('../pages/Dashboard'),
-          meta: { title: 'Option 1' },
+          path: '/barbershop/:id',
+          name: 'barbershop-profile',
+          component: () => import('../pages/BarberShopProfile'),
+          meta: { title: 'Perfil da barbearia' },
         },
         {
-          path: 'option-2',
-          name: 'option-2',
-          component: () => import('../pages/Dashboard'),
-          meta: { title: 'Option 2' },
-        },
-        {
-          path: 'option-3',
-          name: 'option-3',
-          component: () => import('../pages/Dashboard'),
-          meta: { title: 'Option 3' },
-        },
-        {
-          path: 'option-4',
-          name: 'option-4',
-          component: () => import('../pages/Dashboard'),
-          meta: { title: 'Option 4' },
-        },
-        {
-          path: 'option-5',
-          name: 'option-5',
-          component: () => import('../pages/Dashboard'),
-          meta: { title: 'Option 5' },
+          path: '/barbershop/register',
+          name: 'barbershop-register',
+          component: () => import('../pages/BarberShopCreate'),
+          meta: { title: 'Cadastrar barbearia' },
         },
       ],
     },
@@ -48,6 +32,11 @@ const router = createRouter({
       name: 'login',
       component: () => import('../pages/Login'),
     },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('../pages/CreateClient'),
+    }
   ],
 })
 
