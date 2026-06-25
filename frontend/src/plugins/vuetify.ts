@@ -5,13 +5,13 @@ import * as directives from 'vuetify/directives'
 
 import '@mdi/font/css/materialdesignicons.css'
 
-const darkTheme = {
-  dark: true,
+const theme = {
+  dark: false,
   colors: {
-    background: '#1A1C1C',
-    surface: '#333535',
-    primary: '#E9C176',
-    secondary: '#D1C5B4',
+    background: '#F5F5F5',
+    surface: '#F5F5F5',
+    primary: '#111111',
+    secondary: '#C9A84C',
     'brown-dark': '#412D00',
     'brown-muted': '#4E4639',
     error: '#CF6679',
@@ -25,9 +25,9 @@ export default createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: 'darkTheme',
+    defaultTheme: 'theme',
     themes: {
-      darkTheme,
+      theme,
     },
   },
 })
