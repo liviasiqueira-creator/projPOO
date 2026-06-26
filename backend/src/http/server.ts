@@ -6,6 +6,7 @@ import type { UserRepository } from '../domain/repositories/user-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
+import { RegisterUseCase } from '../application/use-cases/register'
 
 interface ServerDeps {
   userRepository: UserRepository
@@ -68,6 +69,56 @@ export async function buildServer(deps: ServerDeps) {
     }
   })
 
+  server.post('/auth/register', {
+    schema: {
+      summary: 'Cadastrar usuário',
+      tags: ['Auth'],
+      body: {
+        type: 'object',
+        required: ['name', 'email', 'password'],
+        properties: {
+          name:      { type: 'string', minLength: 1 },
+          email:     { type: 'string', format: 'email' },
+          password:  { type: 'string', minLength: 6 },
+          role:      { type: 'string', enum: ['client', 'admin', 'barber'] },
+          phone:     { type: 'string' },
+          avatarUrl: { type: 'string' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            accessToken: { type: 'string' },
+          },
+        },
+        409: {
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const body = request.body as {
+      name: string
+      email: string
+      password: string
+      role?: 'client' | 'admin' | 'barber'
+      phone?: string
+      avatarUrl?: string
+    }
+    const useCase = new RegisterUseCase(deps.userRepository, deps.hasher, deps.signer)
+    try {
+      const result = await useCase.execute(body)
+      return reply.status(201).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
   server.get('/auth/me', {
     schema: {
       summary: 'Retorna usuário autenticado',
@@ -96,7 +147,7 @@ export async function buildServer(deps: ServerDeps) {
       return reply.status(401).send({ error: 'Missing token' })
     }
     try {
-      const payload = deps.signer.verify(auth.slice(7))
+      const payload = await deps.signer.verify(auth.slice(7))
       const user = await deps.userRepository.findById(String(payload['sub']))
       if (!user) return reply.status(401).send({ error: 'User not found' })
       return { id: user.id, name: user.name, email: user.email.value }

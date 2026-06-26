@@ -25,8 +25,8 @@ const fakeHasher: PasswordHasher = {
 }
 
 const fakeSigner: TokenSigner = {
-  sign: (payload) => `token_${JSON.stringify(payload)}`,
-  verify: (token) => JSON.parse(token.replace('token_', '')),
+  sign: async (payload) => `token_${JSON.stringify(payload)}`,
+  verify: async (token) => JSON.parse(token.replace('token_', '')),
 }
 
 describe('LoginUseCase', () => {

@@ -42,7 +42,7 @@ export class RegisterUseCase {
 
     await this.userRepository.save(user)
 
-    const accessToken = this.tokenSigner.sign({ sub: user.id })
+    const accessToken = await this.tokenSigner.sign({ sub: user.id })
     return { accessToken }
   }
 }
