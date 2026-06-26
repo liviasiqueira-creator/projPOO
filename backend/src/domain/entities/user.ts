@@ -1,4 +1,12 @@
 import { Email } from '../value-objects/email'
+import { Phone } from '../value-objects/phone'
+import { AvatarUrl } from '../value-objects/avatar-url'
+
+export enum UserRole {
+  Client  = 'client',
+  Admin = 'admin',
+  Barber = 'barber',
+}
 
 export class User {
   private constructor(
@@ -7,9 +15,23 @@ export class User {
     readonly passwordHash: string,
     readonly name: string,
     readonly createdAt: Date,
+    readonly role: UserRole = UserRole.Client,
+    readonly isActive: boolean = true,
+    readonly phone?: Phone,
+    readonly avatarUrl?: AvatarUrl
   ) {}
 
-  static create(props: { id: string; email: string; passwordHash: string; name: string }): User {
-    return new User(props.id, new Email(props.email), props.passwordHash, props.name, new Date())
+  static create(props: { id: string; email: string; passwordHash: string; name: string; role?: UserRole | undefined; phone?: string | undefined; avatarUrl?: string | undefined }): User {
+    return new User(
+      props.id,
+      new Email(props.email),
+      props.passwordHash,
+      props.name,
+      new Date(),
+      props.role,
+      true,
+      props.phone ? new Phone(props.phone) : undefined,
+      props.avatarUrl ? new AvatarUrl(props.avatarUrl) : undefined,
+    )
   }
 }
