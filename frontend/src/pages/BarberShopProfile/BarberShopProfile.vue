@@ -129,7 +129,6 @@ interface Barbershop {
   services: Service[]
 }
 
-// TODO: substituir por chamada à API usando route.params.id
 const barbershop: Barbershop = {
   id: String(route.params.id ?? ''),
   name: 'Barbearia do João',
@@ -145,7 +144,6 @@ const barbershop: Barbershop = {
   services: [
     { name: 'Corte', duration: '30 min', price: 45 },
     { name: 'Barba', duration: '20 min', price: 35 },
-    { name: 'Corte + Barba', duration: '45 min', price: 75 },
     { name: 'Sobrancelha', duration: '15 min', price: 20 },
   ],
 }

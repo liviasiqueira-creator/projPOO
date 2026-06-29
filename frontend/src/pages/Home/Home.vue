@@ -21,6 +21,7 @@
         />
 
         <v-btn
+          v-if="!hasBarbershop"
           color="primary"
           variant="flat"
           rounded="lg"
@@ -53,6 +54,7 @@
         Tente outro termo ou cadastre a primeira barbearia.
       </p>
       <v-btn
+        v-if="!hasBarbershop"
         color="primary"
         variant="flat"
         rounded="lg"
@@ -89,6 +91,9 @@ interface BarberShop {
 
 const route = useRoute()
 const search = ref('')
+
+// TODO: buscar do estado de autenticação
+const hasBarbershop = false
 
 const pageTitle = computed(() => String(route.meta.title ?? 'Barbearias'))
 

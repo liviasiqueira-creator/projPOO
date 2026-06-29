@@ -26,8 +26,8 @@ defineOptions({
   name: 'LoginPage',
 })
 
-const quantityBarberShop = 400; // tem que vir do backend
-const quantityScheduling = 30; // tem que vir do backend
+const quantityBarberShop = 400
+const quantityScheduling = 30
 </script>
 
 <style scoped>

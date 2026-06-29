@@ -108,7 +108,6 @@ const handleSubmit = async () => {
 
   loading.value = true
 
-  // TODO: chamar API de criação de usuário
   setTimeout(() => {
     loading.value = false
     router.push('/home')

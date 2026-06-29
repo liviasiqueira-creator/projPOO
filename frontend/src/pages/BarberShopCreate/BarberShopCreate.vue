@@ -83,6 +83,21 @@
 
         <p class="section-label mb-3 mt-2">Horário de funcionamento</p>
 
+        <p class="text-body-2 text-medium-emphasis mb-2">Dias de funcionamento</p>
+        <div class="d-flex flex-wrap mb-4" style="gap: 6px;">
+          <v-chip
+            v-for="day in dayOptions"
+            :key="day.value"
+            :color="form.workDays.includes(day.value) ? 'primary' : undefined"
+            :variant="form.workDays.includes(day.value) ? 'flat' : 'outlined'"
+            size="small"
+            style="cursor: pointer;"
+            @click="toggleWorkDay(day.value)"
+          >
+            {{ day.label }}
+          </v-chip>
+        </div>
+
         <v-row dense class="mb-2">
           <v-col cols="12" sm="6">
             <v-text-field
@@ -156,6 +171,16 @@ const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
 
+const dayOptions = [
+  { label: 'Seg', value: 'monday' },
+  { label: 'Ter', value: 'tuesday' },
+  { label: 'Qua', value: 'wednesday' },
+  { label: 'Qui', value: 'thursday' },
+  { label: 'Sex', value: 'friday' },
+  { label: 'Sáb', value: 'saturday' },
+  { label: 'Dom', value: 'sunday' },
+]
+
 const serviceOptions = [
   { label: 'Corte', value: 'haircut' },
   { label: 'Barba', value: 'beard' },
@@ -172,10 +197,17 @@ const form = reactive({
     neighborhood: '',
     city: '',
   },
+  workDays: [] as string[],
   openTime: '',
   closeTime: '',
   services: [] as string[],
 })
+
+function toggleWorkDay(day: string) {
+  const idx = form.workDays.indexOf(day)
+  if (idx === -1) form.workDays.push(day)
+  else form.workDays.splice(idx, 1)
+}
 
 const required = [(v: string) => !!v || 'Campo obrigatório']
 
@@ -185,7 +217,6 @@ const handleSubmit = async () => {
 
   loading.value = true
 
-  // TODO: chamar API de cadastro de barbearia
   setTimeout(() => {
     loading.value = false
     router.push('/dashboard/barbershop')

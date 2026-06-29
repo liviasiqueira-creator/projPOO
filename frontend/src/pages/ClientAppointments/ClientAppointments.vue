@@ -1,0 +1,197 @@
+<template>
+  <v-container class="pa-6">
+    <div class="mb-6">
+      <h1 class="text-h5 font-weight-medium">Meus agendamentos</h1>
+      <p class="text-body-2 text-medium-emphasis mt-1">
+        {{ upcomingAppointments.length }} agendamento{{ upcomingAppointments.length !== 1 ? 's' : '' }} próximo{{ upcomingAppointments.length !== 1 ? 's' : '' }}
+      </p>
+    </div>
+
+    <!-- Próximos -->
+    <p class="section-label mb-3">Próximos</p>
+
+    <div v-if="upcomingAppointments.length > 0" class="mb-8">
+      <v-card
+        v-for="appt in upcomingAppointments"
+        :key="appt.id"
+        class="mb-3"
+        rounded="lg"
+        elevation="0"
+        border
+      >
+        <v-card-text class="pa-4">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center" style="gap: 10px;">
+              <v-avatar color="primary" variant="tonal" size="36" rounded="lg">
+                <v-icon icon="mdi-scissors-cutting" size="18" />
+              </v-avatar>
+              <div>
+                <p class="text-body-2 font-weight-medium mb-0">{{ appt.barbershopName }}</p>
+                <p class="text-caption text-medium-emphasis mb-0">{{ appt.service }}</p>
+              </div>
+            </div>
+            <v-chip :color="statusColor(appt.status)" size="small" variant="tonal">
+              {{ statusLabel(appt.status) }}
+            </v-chip>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <div class="d-flex align-center" style="gap: 20px;">
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-calendar-outline" size="15" color="secondary" />
+              <span class="text-caption">{{ formatDate(appt.date) }}</span>
+            </div>
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-clock-outline" size="15" color="secondary" />
+              <span class="text-caption">{{ appt.time }}</span>
+            </div>
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-cash-outline" size="15" color="secondary" />
+              <span class="text-caption">R$ {{ appt.price }}</span>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </div>
+
+    <div v-else class="appointments-empty mb-8">
+      <v-icon icon="mdi-calendar-blank-outline" size="48" color="primary" class="mb-4" />
+      <p class="text-body-1 font-weight-medium">Nenhum agendamento próximo</p>
+      <p class="text-body-2 text-medium-emphasis mt-1">
+        Explore barbearias e agende um horário.
+      </p>
+      <v-btn
+        color="primary"
+        variant="flat"
+        rounded="lg"
+        prepend-icon="mdi-magnify"
+        class="text-none mt-4"
+        to="/home"
+      >
+        Explorar barbearias
+      </v-btn>
+    </div>
+
+    <!-- Histórico -->
+    <template v-if="pastAppointments.length > 0">
+      <p class="section-label mb-3">Histórico</p>
+      <v-card
+        v-for="appt in pastAppointments"
+        :key="appt.id"
+        class="mb-3"
+        rounded="lg"
+        elevation="0"
+        border
+        :style="{ opacity: appt.status === 'cancelled' ? 0.6 : 1 }"
+      >
+        <v-card-text class="pa-4">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center" style="gap: 10px;">
+              <v-avatar color="primary" variant="tonal" size="36" rounded="lg">
+                <v-icon icon="mdi-scissors-cutting" size="18" />
+              </v-avatar>
+              <div>
+                <p class="text-body-2 font-weight-medium mb-0">{{ appt.barbershopName }}</p>
+                <p class="text-caption text-medium-emphasis mb-0">{{ appt.service }}</p>
+              </div>
+            </div>
+            <v-chip :color="statusColor(appt.status)" size="small" variant="tonal">
+              {{ statusLabel(appt.status) }}
+            </v-chip>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <div class="d-flex align-center" style="gap: 20px;">
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-calendar-outline" size="15" color="secondary" />
+              <span class="text-caption">{{ formatDate(appt.date) }}</span>
+            </div>
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-clock-outline" size="15" color="secondary" />
+              <span class="text-caption">{{ appt.time }}</span>
+            </div>
+            <div class="d-flex align-center" style="gap: 6px;">
+              <v-icon icon="mdi-cash-outline" size="15" color="secondary" />
+              <span class="text-caption">R$ {{ appt.price }}</span>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </template>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+interface ClientAppointment {
+  id: number
+  barbershopName: string
+  service: string
+  date: string
+  time: string
+  price: number
+  status: 'confirmed' | 'pending' | 'cancelled' | 'done'
+}
+
+// TODO: buscar do back — GET /appointments/me
+const appointments: ClientAppointment[] = [
+  { id: 1, barbershopName: 'Barbearia do João', service: 'Corte', date: '2026-07-02', time: '09:30', price: 45, status: 'confirmed' },
+  { id: 2, barbershopName: 'Black Label Barber', service: 'Corte + Barba', date: '2026-07-10', time: '14:00', price: 65, status: 'pending' },
+  { id: 3, barbershopName: 'Barbearia do João', service: 'Barba', date: '2026-06-15', time: '10:00', price: 35, status: 'done' },
+  { id: 4, barbershopName: 'Corte & Estilo Premium', service: 'Corte', date: '2026-06-01', time: '11:00', price: 50, status: 'cancelled' },
+]
+
+const today = new Date().toISOString().split('T')[0]
+
+const upcomingAppointments = computed(() =>
+  appointments
+    .filter(a => a.date >= today && a.status !== 'cancelled')
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+)
+
+const pastAppointments = computed(() =>
+  appointments
+    .filter(a => a.date < today || a.status === 'cancelled')
+    .sort((a, b) => b.date.localeCompare(a.date))
+)
+
+function formatDate(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
+function statusColor(status: ClientAppointment['status']) {
+  const map = { confirmed: 'success', pending: 'warning', cancelled: 'error', done: 'default' } as const
+  return map[status]
+}
+
+function statusLabel(status: ClientAppointment['status']) {
+  const map = { confirmed: 'Confirmado', pending: 'Pendente', cancelled: 'Cancelado', done: 'Concluído' } as const
+  return map[status]
+}
+</script>
+
+<style scoped>
+.section-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-secondary));
+}
+
+.appointments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+</style>

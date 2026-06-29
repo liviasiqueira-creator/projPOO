@@ -19,7 +19,6 @@ const clientItems = [
   { title: 'Explorar barbearias', icon: 'mdi-grid-large', to: '/home' },
 ]
 
-// TODO: substituir pelo store do usuário quando tiver autenticação
 const hasBarbershop = true
 
 const activePath = computed(() => route.path)
