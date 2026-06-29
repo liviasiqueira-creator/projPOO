@@ -98,16 +98,6 @@ const activePath = computed(() => route.path)
     <template #append>
       <v-divider class="app-sidebar__divider" />
       <div class="app-sidebar__footer pa-3">
-        <div class="d-flex align-center ga-3">
-          <v-avatar size="32" color="primary" variant="flat">
-            <span class="app-sidebar__avatar-text">JC</span>
-          </v-avatar>
-          <div class="flex-1-1 overflow-hidden">
-            <p class="text-body-2 mb-0 text-truncate">João Carlos</p>
-            <p class="text-caption mb-0 app-sidebar__role">
-              {{ hasBarbershop ? 'Dono' : 'Cliente' }}
-            </p>
-          </div>
           <v-btn
             icon="mdi-logout"
             size="x-small"
@@ -115,7 +105,6 @@ const activePath = computed(() => route.path)
             color="secondary"
             aria-label="Sair"
           />
-        </div>
       </div>
     </template>
   </v-navigation-drawer>
