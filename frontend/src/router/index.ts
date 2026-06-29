@@ -25,6 +25,36 @@ const router = createRouter({
           component: () => import('../pages/BarberShopCreate'),
           meta: { title: 'Cadastrar barbearia' },
         },
+        {
+          path: '/barbershop/:id/schedule',
+          name: 'barbershop-schedule',
+          component: () => import('../pages/Schedule'),
+          meta: { title: 'Agendar horário' },
+        },
+        {
+          path: '/appointments',
+          name: 'appointments',
+          component: () => import('../pages/ClientAppointments'),
+          meta: { title: 'Meus agendamentos' },
+        },
+        {
+          path: '/dashboard/promotions',
+          name: 'dashboard-promotions',
+          component: () => import('../pages/DashboardPromotions'),
+          meta: { title: 'Promoções' },
+        },
+        {
+          path: '/dashboard/appointments',
+          name: 'dashboard-appointments',
+          component: () => import('../pages/Appointments'),
+          meta: { title: 'Agendamentos' },
+        },
+        {
+          path: '/dashboard/barbershop',
+          name: 'dashboard-barbershop',
+          component: () => import('../pages/DashboardBarbershop'),
+          meta: { title: 'Minha barbearia' },
+        },
       ],
     },
     {
