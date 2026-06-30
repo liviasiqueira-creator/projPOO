@@ -349,5 +349,96 @@ export async function buildServer(deps: ServerDeps) {
     }
   })
 
+  server.get('/barbershops/:barbershopId', {
+    schema: {
+      summary: 'Buscar barbearia por ID',
+      tags: ['Barbershops'],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: {
+          barbershopId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:        { type: 'string' },
+            name:      { type: 'string' },
+            slug:      { type: 'string' },
+            city:      { type: 'string' },
+            address:   { type: 'string' },
+            phone:     { type: 'string' },
+            logoUrl:   { type: 'string' },
+            latitude:  { type: 'number' },
+            longitude: { type: 'number' },
+          },
+        },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const { barbershopId } = request.params as { barbershopId: string }
+    const barbershop = await deps.barbershopRepository.findById(barbershopId)
+    if (!barbershop) return reply.status(404).send({ error: 'Barbershop not found.' })
+
+    return {
+      id: barbershop.id,
+      name: barbershop.name,
+      slug: barbershop.slug.value,
+      city: barbershop.city,
+      address: barbershop.address,
+      phone: barbershop.phone?.value,
+      logoUrl: barbershop.logoUrl?.value,
+      latitude: barbershop.latitude,
+      longitude: barbershop.longitude,
+    }
+  })
+
+  server.get('/barbershops/:barbershopId/services', {
+    schema: {
+      summary: 'Listar serviços de uma barbearia',
+      tags: ['Barbershops'],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: {
+          barbershopId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id:              { type: 'string' },
+              name:            { type: 'string' },
+              description:     { type: 'string' },
+              durationMinutes: { type: 'number' },
+              basePrice:       { type: 'number' },
+            },
+          },
+        },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const { barbershopId } = request.params as { barbershopId: string }
+    const barbershop = await deps.barbershopRepository.findById(barbershopId)
+    if (!barbershop) return reply.status(404).send({ error: 'Barbershop not found.' })
+
+    const services = await deps.serviceRepository.findByBarbershopId(barbershopId)
+
+    return services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      durationMinutes: s.durationMinutes,
+      basePrice: s.basePrice,
+    }))
+  })
+
   return server
 }
