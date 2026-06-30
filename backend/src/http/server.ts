@@ -5,17 +5,21 @@ import swaggerUi from '@fastify/swagger-ui'
 import type { UserRepository } from '../domain/repositories/user-repository'
 import type { BarbershopRepository } from '../domain/repositories/barbershop-repository'
 import type { ServiceRepository } from '../domain/repositories/service-repository'
+import type { BarberMembershipRepository } from '../domain/repositories/barber-membership-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
 import { RegisterUseCase } from '../application/use-cases/register'
 import { CreateBarbershopUseCase } from '../application/use-cases/create-barbershop'
 import { CreateServiceUseCase } from '../application/use-cases/create-service'
+import { HireBarberUseCase } from '../application/use-cases/hire-barber'
+import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclusivity'
 
 interface ServerDeps {
   userRepository: UserRepository
   barbershopRepository: BarbershopRepository
   serviceRepository: ServiceRepository
+  membershipRepository: BarberMembershipRepository
   hasher: PasswordHasher
   signer: TokenSigner
 }
@@ -438,6 +442,108 @@ export async function buildServer(deps: ServerDeps) {
       durationMinutes: s.durationMinutes,
       basePrice: s.basePrice,
     }))
+  })
+
+  server.post('/barbershops/:barbershopId/barbers', {
+    schema: {
+      summary: 'Contratar barbeiro para uma barbearia',
+      tags: ['Memberships'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: { barbershopId: { type: 'string' } },
+      },
+      body: {
+        type: 'object',
+        required: ['barberUserId', 'isExclusive'],
+        properties: {
+          barberUserId: { type: 'string' },
+          isExclusive:  { type: 'boolean' },
+          allowedShift: { type: 'string', enum: ['morning', 'afternoon', 'evening'] },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id:           { type: 'string' },
+            barberUserId: { type: 'string' },
+            barbershopId: { type: 'string' },
+            isExclusive:  { type: 'boolean' },
+            allowedShift: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barbershopId } = request.params as { barbershopId: string }
+    const body = request.body as { barberUserId: string; isExclusive: boolean; allowedShift?: 'morning' | 'afternoon' | 'evening' }
+
+    const useCase = new HireBarberUseCase(deps.membershipRepository, deps.userRepository, deps.barbershopRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, ...body })
+      return reply.status(201).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to hire barber.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.patch('/barbershops/:barbershopId/barbers/:barberUserId/exclusivity', {
+    schema: {
+      summary: 'Atualizar exclusividade de barbeiro',
+      tags: ['Memberships'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'barberUserId'],
+        properties: {
+          barbershopId:  { type: 'string' },
+          barberUserId:  { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['isExclusive'],
+        properties: {
+          isExclusive: { type: 'boolean' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:          { type: 'string' },
+            isExclusive: { type: 'boolean' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barbershopId, barberUserId } = request.params as { barbershopId: string; barberUserId: string }
+    const { isExclusive } = request.body as { isExclusive: boolean }
+
+    const useCase = new UpdateExclusivityUseCase(deps.membershipRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, barberUserId, isExclusive })
+      return reply.status(200).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update exclusivity.'
+      return reply.status(409).send({ error: message })
+    }
   })
 
   return server
