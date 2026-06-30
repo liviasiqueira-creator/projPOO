@@ -3,13 +3,16 @@ import cors from '@fastify/cors'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import type { UserRepository } from '../domain/repositories/user-repository'
+import type { BarbershopRepository } from '../domain/repositories/barbershop-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
 import { RegisterUseCase } from '../application/use-cases/register'
+import { CreateBarbershopUseCase } from '../application/use-cases/create-barbershop'
 
 interface ServerDeps {
   userRepository: UserRepository
+  barbershopRepository: BarbershopRepository
   hasher: PasswordHasher
   signer: TokenSigner
 }
@@ -153,6 +156,70 @@ export async function buildServer(deps: ServerDeps) {
       return { id: user.id, name: user.name, email: user.email.value }
     } catch {
       return reply.status(401).send({ error: 'Invalid token' })
+    }
+  })
+
+  server.post('/barbershops', {
+    schema: {
+      summary: 'Cadastrar barbearia',
+      tags: ['Barbershops'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['name'],
+        properties: {
+          name:     { type: 'string', minLength: 1 },
+          address:  { type: 'string' },
+          city:     { type: 'string' },
+          phone:    { type: 'string' },
+          logoUrl:  { type: 'string' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id:   { type: 'string' },
+            name: { type: 'string' },
+            slug: { type: 'string' },
+          },
+        },
+        401: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+        409: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) {
+      return reply.status(401).send({ error: 'Missing token' })
+    }
+    try {
+      await deps.signer.verify(auth.slice(7))
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const body = request.body as {
+      name: string
+      address?: string
+      city?: string
+      phone?: string
+      logoUrl?: string
+    }
+
+    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository)
+    try {
+      const result = await useCase.execute(body)
+      return reply.status(201).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create barbershop.'
+      return reply.status(409).send({ error: message })
     }
   })
 
