@@ -17,6 +17,7 @@ import { HireBarberUseCase } from '../application/use-cases/hire-barber'
 import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclusivity'
 import { BookAppointmentUseCase } from '../application/use-cases/book-appointment'
 import { UpdateAppointmentStatusUseCase } from '../application/use-cases/update-appointment-status'
+import { UserRole } from '../domain/entities/user'
 
 interface ServerDeps {
   userRepository: UserRepository
@@ -119,7 +120,7 @@ export async function buildServer(deps: ServerDeps) {
       name: string
       email: string
       password: string
-      role?: 'client' | 'admin' | 'barber'
+      role?: UserRole
       phone?: string
       avatarUrl?: string
     }
@@ -164,7 +165,7 @@ export async function buildServer(deps: ServerDeps) {
       const payload = await deps.signer.verify(auth.slice(7))
       const user = await deps.userRepository.findById(String(payload['sub']))
       if (!user) return reply.status(401).send({ error: 'User not found' })
-      return { id: user.id, name: user.name, email: user.email.value }
+      return { id: user.id, name: user.name, email: user.email.value, role: user.role }
     } catch {
       return reply.status(401).send({ error: 'Invalid token' })
     }
