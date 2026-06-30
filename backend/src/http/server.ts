@@ -6,6 +6,7 @@ import type { UserRepository } from '../domain/repositories/user-repository'
 import type { BarbershopRepository } from '../domain/repositories/barbershop-repository'
 import type { ServiceRepository } from '../domain/repositories/service-repository'
 import type { BarberMembershipRepository } from '../domain/repositories/barber-membership-repository'
+import type { AppointmentRepository } from '../domain/repositories/appointment-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
@@ -14,12 +15,15 @@ import { CreateBarbershopUseCase } from '../application/use-cases/create-barbers
 import { CreateServiceUseCase } from '../application/use-cases/create-service'
 import { HireBarberUseCase } from '../application/use-cases/hire-barber'
 import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclusivity'
+import { BookAppointmentUseCase } from '../application/use-cases/book-appointment'
+import { UpdateAppointmentStatusUseCase } from '../application/use-cases/update-appointment-status'
 
 interface ServerDeps {
   userRepository: UserRepository
   barbershopRepository: BarbershopRepository
   serviceRepository: ServiceRepository
   membershipRepository: BarberMembershipRepository
+  appointmentRepository: AppointmentRepository
   hasher: PasswordHasher
   signer: TokenSigner
 }
@@ -542,6 +546,188 @@ export async function buildServer(deps: ServerDeps) {
       return reply.status(200).send(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update exclusivity.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.post('/appointments', {
+    schema: {
+      summary: 'Agendar horário',
+      tags: ['Appointments'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['barbershopId', 'barberUserId', 'serviceId', 'scheduledAt'],
+        properties: {
+          barbershopId: { type: 'string' },
+          barberUserId: { type: 'string' },
+          serviceId:    { type: 'string' },
+          scheduledAt:  { type: 'string', format: 'date-time' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id:              { type: 'string' },
+            barbershopId:    { type: 'string' },
+            barberUserId:    { type: 'string' },
+            clientUserId:    { type: 'string' },
+            serviceId:       { type: 'string' },
+            scheduledAt:     { type: 'string' },
+            endsAt:          { type: 'string' },
+            durationMinutes: { type: 'number' },
+            priceSnapshot:   { type: 'number' },
+            status:          { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+
+    let clientUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      clientUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const body = request.body as {
+      barbershopId: string
+      barberUserId: string
+      serviceId: string
+      scheduledAt: string
+    }
+
+    const useCase = new BookAppointmentUseCase(deps.appointmentRepository, deps.serviceRepository, deps.membershipRepository)
+    try {
+      const result = await useCase.execute({ ...body, clientUserId, scheduledAt: new Date(body.scheduledAt) })
+      return reply.status(201).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to book appointment.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.get('/appointments', {
+    schema: {
+      summary: 'Listar agendamentos',
+      tags: ['Appointments'],
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          barbershopId: { type: 'string' },
+          barberUserId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id:              { type: 'string' },
+              barbershopId:    { type: 'string' },
+              barberUserId:    { type: 'string' },
+              clientUserId:    { type: 'string' },
+              serviceId:       { type: 'string' },
+              scheduledAt:     { type: 'string' },
+              endsAt:          { type: 'string' },
+              durationMinutes: { type: 'number' },
+              priceSnapshot:   { type: 'number' },
+              status:          { type: 'string' },
+            },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+
+    let clientUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      clientUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const { barbershopId, barberUserId } = request.query as { barbershopId?: string; barberUserId?: string }
+
+    let appointments
+    if (barbershopId) {
+      appointments = await deps.appointmentRepository.findByBarbershopId(barbershopId)
+    } else if (barberUserId) {
+      appointments = await deps.appointmentRepository.findByBarberUserId(barberUserId)
+    } else {
+      appointments = await deps.appointmentRepository.findByClientUserId(clientUserId)
+    }
+
+    return appointments.map((a) => ({
+      id: a.id,
+      barbershopId: a.barbershopId,
+      barberUserId: a.barberUserId,
+      clientUserId: a.clientUserId,
+      serviceId: a.serviceId,
+      scheduledAt: a.scheduledAt.toISOString(),
+      endsAt: a.endsAt.toISOString(),
+      durationMinutes: a.durationMinutes,
+      priceSnapshot: a.priceSnapshot,
+      status: a.status,
+    }))
+  })
+
+  server.patch('/appointments/:appointmentId/status', {
+    schema: {
+      summary: 'Atualizar status do agendamento',
+      tags: ['Appointments'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['appointmentId'],
+        properties: { appointmentId: { type: 'string' } },
+      },
+      body: {
+        type: 'object',
+        required: ['status'],
+        properties: {
+          status: { type: 'string', enum: ['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'] },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:     { type: 'string' },
+            status: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { appointmentId } = request.params as { appointmentId: string }
+    const { status } = request.body as { status: 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' }
+
+    const useCase = new UpdateAppointmentStatusUseCase(deps.appointmentRepository)
+    try {
+      const result = await useCase.execute({ appointmentId, status })
+      return reply.status(200).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update status.'
       return reply.status(409).send({ error: message })
     }
   })
