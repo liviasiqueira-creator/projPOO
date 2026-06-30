@@ -1,14 +1,22 @@
-import jwt from 'jsonwebtoken'
+import { SignJWT, jwtVerify } from 'jose'
 import type { TokenSigner } from '../application/ports/token-signer'
 
 export class JwtSigner implements TokenSigner {
-  constructor(private readonly secret: string) {}
+  private readonly key: Uint8Array
 
-  sign(payload: Record<string, unknown>): string {
-    return jwt.sign(payload, this.secret, { expiresIn: '7d' })
+  constructor(secret: string) {
+    this.key = new TextEncoder().encode(secret)
   }
 
-  verify(token: string): Record<string, unknown> {
-    return jwt.verify(token, this.secret) as Record<string, unknown>
+  async sign(payload: Record<string, unknown>): Promise<string> {
+    return new SignJWT(payload)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(this.key)
+  }
+
+  async verify(token: string): Promise<Record<string, unknown>> {
+    const { payload } = await jwtVerify(token, this.key)
+    return payload as Record<string, unknown>
   }
 }

@@ -19,7 +19,7 @@ export class LoginUseCase {
     const valid = await this.hasher.compare(input.password, user.passwordHash)
     if (!valid) throw new Error('Invalid credentials')
 
-    const accessToken = this.tokenSigner.sign({ sub: user.id })
+    const accessToken = await this.tokenSigner.sign({ sub: user.id })
     return { accessToken }
   }
 }
