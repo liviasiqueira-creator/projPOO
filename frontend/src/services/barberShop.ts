@@ -6,6 +6,7 @@ export interface Barbershop {
   slug: string
   city?: string
   address?: string
+  logoUrl?: string
   latitude?: number
   longitude?: number
 }
@@ -43,7 +44,6 @@ export async function createBarbershop(payload: CreateBarbershopPayload): Promis
 
 export interface BarbershopDetail extends Barbershop {
   phone?: string
-  logoUrl?: string
 }
 
 export async function getBarbershop(barbershopId: string): Promise<BarbershopDetail> {
