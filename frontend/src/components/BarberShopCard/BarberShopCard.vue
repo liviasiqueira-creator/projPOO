@@ -6,38 +6,16 @@
     :ripple="false"
   >
     <div class="barber-card__image">
-      <v-img
-        v-if="barberShop.photoUrl"
-        :src="barberShop.photoUrl"
-        :alt="`Foto da ${barberShop.name}`"
-        height="160"
-        cover
-      />
-      <div v-else class="barber-card__image-placeholder">
+      <div class="barber-card__image-placeholder">
         <v-icon icon="mdi-scissors-cutting" size="36" color="primary" />
       </div>
-
-      <v-chip
-        class="barber-card__status"
-        size="small"
-        color="surface"
-        variant="flat"
-      >
-        <span :class="barberShop.isOpen ? 'barber-card__status--open' : 'barber-card__status--closed'">
-          {{ barberShop.isOpen ? 'Aberto' : 'Fechado' }}
-        </span>
-      </v-chip>
     </div>
 
     <v-card-text class="barber-card__body">
       <h3 class="barber-card__name text-truncate">{{ barberShop.name }}</h3>
 
       <div class="barber-card__info">
-        <div class="barber-card__info-row">
-          <v-icon icon="mdi-phone-outline" size="15" color="primary" />
-          <span class="barber-card__info-text">{{ barberShop.phone }}</span>
-        </div>
-        <div class="barber-card__info-row">
+        <div v-if="formattedAddress" class="barber-card__info-row">
           <v-icon icon="mdi-map-marker-outline" size="15" color="primary" />
           <span class="barber-card__info-text">{{ formattedAddress }}</span>
         </div>
@@ -75,20 +53,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-interface Address {
-  street: string
-  number: string
-  neighborhood?: string
-  city: string
-}
-
 interface BarberShop {
   id: number | string
   name: string
-  phone: string
-  address: Address
-  photoUrl?: string
-  isOpen?: boolean
+  address?: string
+  city?: string
 }
 
 const props = defineProps<{
@@ -96,13 +65,7 @@ const props = defineProps<{
 }>()
 
 const formattedAddress = computed(() => {
-  const { street, number, neighborhood, city } = props.barberShop.address
-  const parts = [
-    `${street}, ${number}`,
-    neighborhood,
-    city,
-  ].filter(Boolean)
-  return parts.join(' — ')
+  return [props.barberShop.address, props.barberShop.city].filter(Boolean).join(' — ')
 })
 </script>
 
@@ -127,22 +90,6 @@ const formattedAddress = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.barber-card__status {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.barber-card__status--open {
-  color: #2E7D32;
-}
-
-.barber-card__status--closed {
-  color: rgb(var(--v-theme-secondary));
 }
 
 .barber-card__body {
