@@ -22,9 +22,10 @@ async function main() {
     User.create({ id: '1', email: 'joao@email.com', passwordHash, name: 'João Silva' })
   )
 
+  const port = Number(process.env.PORT ?? 3000)
   const server = await buildServer({ userRepository, barbershopRepository, serviceRepository, membershipRepository, appointmentRepository, hasher, signer })
-  await server.listen({ port: 3000, host: '0.0.0.0' })
-  console.log('Backend rodando em http://localhost:3000')
+  await server.listen({ port, host: '0.0.0.0' })
+  console.log(`Backend rodando em http://localhost:${port}`)
 }
 
 main()
