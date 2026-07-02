@@ -7,6 +7,7 @@ import type { BarbershopRepository } from '../domain/repositories/barbershop-rep
 import type { ServiceRepository } from '../domain/repositories/service-repository'
 import type { BarberMembershipRepository } from '../domain/repositories/barber-membership-repository'
 import type { AppointmentRepository } from '../domain/repositories/appointment-repository'
+import type { BarberAvailabilityRepository } from '../domain/repositories/barber-availability-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
@@ -18,6 +19,9 @@ import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclus
 import { BookAppointmentUseCase } from '../application/use-cases/book-appointment'
 import { UpdateAppointmentStatusUseCase } from '../application/use-cases/update-appointment-status'
 import { UserRole } from '../domain/entities/user'
+import { SetBarberAvailabilityUseCase } from '../application/use-cases/set-barber-availability'
+import { DeleteBarberAvailabilityUseCase } from '../application/use-cases/delete-barber-availability'
+import { GetAvailableSlotsUseCase } from '../application/use-cases/get-available-slots'
 
 interface ServerDeps {
   userRepository: UserRepository
@@ -25,6 +29,7 @@ interface ServerDeps {
   serviceRepository: ServiceRepository
   membershipRepository: BarberMembershipRepository
   appointmentRepository: AppointmentRepository
+  availabilityRepository: BarberAvailabilityRepository
   hasher: PasswordHasher
   signer: TokenSigner
 }
@@ -126,7 +131,14 @@ export async function buildServer(deps: ServerDeps) {
     }
     const useCase = new RegisterUseCase(deps.userRepository, deps.hasher, deps.signer)
     try {
-      const result = await useCase.execute(body)
+      const result = await useCase.execute({
+        name: body.name,
+        email: body.email,
+        password: body.password,
+        ...(body.role !== undefined && { role: body.role as import('../domain/entities/user').UserRole }),
+        ...(body.phone !== undefined && { phone: body.phone }),
+        ...(body.avatarUrl !== undefined && { avatarUrl: body.avatarUrl }),
+      })
       return reply.status(201).send(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed.'
@@ -730,6 +742,150 @@ export async function buildServer(deps: ServerDeps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update status.'
       return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.post('/barbershops/:barbershopId/barbers/:barberUserId/availability', {
+    schema: {
+      summary: 'Definir disponibilidade de barbeiro',
+      tags: ['Availability'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'barberUserId'],
+        properties: {
+          barbershopId:  { type: 'string' },
+          barberUserId:  { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['weekday', 'startTime', 'endTime'],
+        properties: {
+          weekday:   { type: 'number', minimum: 0, maximum: 6 },
+          startTime: { type: 'string', description: 'HH:MM' },
+          endTime:   { type: 'string', description: 'HH:MM' },
+        },
+      },
+      response: {
+        201: {
+          type: 'object',
+          properties: {
+            id:           { type: 'string' },
+            barberUserId: { type: 'string' },
+            barbershopId: { type: 'string' },
+            weekday:      { type: 'number' },
+            startTime:    { type: 'string' },
+            endTime:      { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barbershopId, barberUserId } = request.params as { barbershopId: string; barberUserId: string }
+    const body = request.body as { weekday: number; startTime: string; endTime: string }
+
+    const useCase = new SetBarberAvailabilityUseCase(deps.availabilityRepository, deps.membershipRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, barberUserId, ...body, weekday: body.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6 })
+      return reply.status(201).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to set availability.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.delete('/barbershops/:barbershopId/barbers/:barberUserId/availability/:availabilityId', {
+    schema: {
+      summary: 'Remover bloco de disponibilidade de barbeiro',
+      tags: ['Availability'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'barberUserId', 'availabilityId'],
+        properties: {
+          barbershopId:   { type: 'string' },
+          barberUserId:   { type: 'string' },
+          availabilityId: { type: 'string' },
+        },
+      },
+      response: {
+        204: { type: 'null' },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barberUserId, availabilityId } = request.params as {
+      barbershopId: string
+      barberUserId: string
+      availabilityId: string
+    }
+
+    const useCase = new DeleteBarberAvailabilityUseCase(deps.availabilityRepository)
+    try {
+      await useCase.execute({ barberUserId, availabilityId })
+      return reply.status(204).send()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete availability.'
+      return reply.status(404).send({ error: message })
+    }
+  })
+
+  server.get('/barbershops/:barbershopId/available-slots', {
+    schema: {
+      summary: 'Listar horários disponíveis para agendamento',
+      tags: ['Availability'],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: {
+          barbershopId: { type: 'string' },
+        },
+      },
+      querystring: {
+        type: 'object',
+        required: ['serviceId', 'date'],
+        properties: {
+          serviceId: { type: 'string' },
+          date:      { type: 'string', description: 'YYYY-MM-DD' },
+        },
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              barberUserId: { type: 'string' },
+              startTime:    { type: 'string' },
+              endTime:      { type: 'string' },
+            },
+          },
+        },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const { barbershopId } = request.params as { barbershopId: string }
+    const { serviceId, date } = request.query as { serviceId: string; date: string }
+
+    const useCase = new GetAvailableSlotsUseCase(deps.availabilityRepository, deps.appointmentRepository, deps.serviceRepository)
+    try {
+      return await useCase.execute({ barbershopId, serviceId, date })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to get available slots.'
+      return reply.status(404).send({ error: message })
     }
   })
 

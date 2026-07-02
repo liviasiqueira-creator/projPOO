@@ -65,7 +65,7 @@ export class HireBarberUseCase {
       barberUserId: membership.barberUserId,
       barbershopId: membership.barbershopId,
       isExclusive: membership.isExclusive,
-      allowedShift: membership.allowedShift,
+      ...(membership.allowedShift !== undefined && { allowedShift: membership.allowedShift }),
     }
   }
 }

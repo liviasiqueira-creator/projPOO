@@ -7,6 +7,7 @@ import type { Barbershop } from '../../domain/entities/barbershop'
 const makeFakeRepo = (existing?: Barbershop): BarbershopRepository => ({
   findById: async () => null,
   findBySlug: async (slug) => existing?.slug.value === slug ? existing : null,
+  findAll: async () => [],
   save: async () => {},
 })
 
