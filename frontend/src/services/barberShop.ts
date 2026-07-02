@@ -40,3 +40,26 @@ export async function createBarbershop(payload: CreateBarbershopPayload): Promis
   const { data } = await api.post<CreateBarbershopResponse>('/barbershops', payload)
   return data
 }
+
+export interface BarbershopDetail extends Barbershop {
+  phone?: string
+  logoUrl?: string
+}
+
+export async function getBarbershop(barbershopId: string): Promise<BarbershopDetail> {
+  const { data } = await api.get<BarbershopDetail>(`/barbershops/${barbershopId}`)
+  return data
+}
+
+export interface Service {
+  id: string
+  name: string
+  description?: string
+  durationMinutes: number
+  basePrice: number
+}
+
+export async function listServices(barbershopId: string): Promise<Service[]> {
+  const { data } = await api.get<Service[]>(`/barbershops/${barbershopId}/services`)
+  return data
+}
