@@ -6,7 +6,14 @@
     :ripple="false"
   >
     <div class="barber-card__image">
-      <div class="barber-card__image-placeholder">
+      <v-img
+        v-if="barberShop.logoUrl"
+        :src="barberShop.logoUrl"
+        :alt="`Foto da ${barberShop.name}`"
+        height="160"
+        cover
+      />
+      <div v-else class="barber-card__image-placeholder">
         <v-icon icon="mdi-scissors-cutting" size="36" color="primary" />
       </div>
     </div>
@@ -58,6 +65,7 @@ interface BarberShop {
   name: string
   address?: string
   city?: string
+  logoUrl?: string
 }
 
 const props = defineProps<{

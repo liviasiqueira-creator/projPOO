@@ -271,6 +271,7 @@ export async function buildServer(deps: ServerDeps) {
               slug:      { type: 'string' },
               city:      { type: 'string' },
               address:   { type: 'string' },
+              logoUrl:   { type: 'string' },
               latitude:  { type: 'number' },
               longitude: { type: 'number' },
             },
@@ -299,6 +300,7 @@ export async function buildServer(deps: ServerDeps) {
       slug: b.slug.value,
       city: b.city,
       address: b.address,
+      logoUrl: b.logoUrl?.value,
       latitude: b.latitude,
       longitude: b.longitude,
     }))
