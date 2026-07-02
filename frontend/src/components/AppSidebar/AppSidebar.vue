@@ -32,7 +32,7 @@ const activePath = computed(() => route.path)
     elevation="0"
   >
     <div class="app-sidebar__brand px-5 pt-5 pb-4">
-      <p class="app-sidebar__logo">---- decidir nome ou logo</p>
+      <p class="app-sidebar__logo"> Blade </p>
       <p class="app-sidebar__sub text-caption">
         {{ hasBarbershop ? 'Painel da barbearia' : 'Área do cliente' }}
       </p>

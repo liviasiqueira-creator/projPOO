@@ -3,7 +3,7 @@
   <v-card class="bg-transparent w-50 px-2 form-card mx-auto" rounded="xl" elevation="0">
     <v-row class="fill-height">
       <v-col class="form-panel">
-         <h1 style="color: var(--btn-accent-bg);"> Nome ou logo? </h1>
+         <h1 style="color: var(--btn-accent-bg);"> Blade </h1>
          <p> <b>Gerencie sua barbearia</b> ou agende seu horário com facilidade. </p>
          <div>
           <span class="form-panel__metric"> <span>{{ quantityBarberShop }}+</span><br> barbearias</span>

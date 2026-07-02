@@ -21,7 +21,6 @@
         />
 
         <v-btn
-          v-if="!hasBarbershop"
           color="primary"
           variant="flat"
           rounded="lg"
@@ -34,10 +33,16 @@
       </div>
     </div>
 
-    <v-row v-if="filteredBarbershops.length > 0">
+    <v-row v-if="loading">
+      <v-col cols="12" class="d-flex justify-center pa-10">
+        <v-progress-circular indeterminate color="primary" />
+      </v-col>
+    </v-row>
+
+    <v-row v-else-if="filteredBarbershops.length > 0">
       <v-col
         v-for="shop in filteredBarbershops"
-        :key="shop.name"
+        :key="shop.id"
         cols="12"
         sm="6"
         md="4"
@@ -54,7 +59,6 @@
         Tente outro termo ou cadastre a primeira barbearia.
       </p>
       <v-btn
-        v-if="!hasBarbershop"
         color="primary"
         variant="flat"
         rounded="lg"
@@ -69,72 +73,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import BarberShopCard from '../../components/BarberShopCard'
-
-interface Address {
-  street: string
-  number: string
-  neighborhood?: string
-  city: string
-}
-
-interface BarberShop {
-  id: number | string
-  name: string
-  phone: string
-  address: Address
-  photoUrl?: string
-  isOpen?: boolean
-}
+import { listBarbershops, type Barbershop } from '../../services/barberShop'
 
 const route = useRoute()
 const search = ref('')
-
-// TODO: buscar do estado de autenticação
-const hasBarbershop = false
+const loading = ref(false)
+const barbershops = ref<Barbershop[]>([])
 
 const pageTitle = computed(() => String(route.meta.title ?? 'Barbearias'))
 
-const barbershops: BarberShop[] = [
-  {
-    id: 1,
-    name: 'Barbearia do João',
-    phone: '(11) 98765-4321',
-    isOpen: true,
-    address: { street: 'Rua das Flores', number: '142', neighborhood: 'Centro', city: 'São Paulo' },
-  },
-  {
-    id: 2,
-    name: 'Corte & Estilo Premium',
-    phone: '(11) 91234-5678',
-    isOpen: true,
-    address: { street: 'Av. Paulista', number: '900', neighborhood: 'Bela Vista', city: 'São Paulo' },
-  },
-  {
-    id: 3,
-    name: 'Black Label Barber',
-    phone: '(11) 94567-8901',
-    isOpen: false,
-    address: { street: 'Rua Augusta', number: '55', neighborhood: 'Consolação', city: 'São Paulo' },
-  },
-  {
-    id: 4,
-    name: 'Navalha & Co.',
-    phone: '(11) 93210-9876',
-    isOpen: true,
-    address: { street: 'Rua Oscar Freire', number: '310', neighborhood: 'Jardins', city: 'São Paulo' },
-  },
-]
+async function fetchBarbershops() {
+  loading.value = true
+  try {
+    barbershops.value = await listBarbershops()
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchBarbershops)
 
 const filteredBarbershops = computed(() => {
   const term = search.value.toLowerCase().trim()
-  if (!term) return barbershops
-  return barbershops.filter(shop =>
+  if (!term) return barbershops.value
+  return barbershops.value.filter(shop =>
     shop.name.toLowerCase().includes(term) ||
-    shop.address.city.toLowerCase().includes(term) ||
-    shop.address.neighborhood?.toLowerCase().includes(term)
+    shop.city?.toLowerCase().includes(term) ||
+    shop.address?.toLowerCase().includes(term)
   )
 })
 
