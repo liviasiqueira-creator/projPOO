@@ -8,6 +8,19 @@
 
       <v-form ref="formRef" @submit.prevent="handleSubmit">
 
+        <v-alert
+          v-if="errorMessage"
+          type="error"
+          variant="tonal"
+          rounded="lg"
+          density="comfortable"
+          class="mb-4"
+          closable
+          @click:close="errorMessage = null"
+        >
+          {{ errorMessage }}
+        </v-alert>
+
         <p class="section-label mb-3">Informações básicas</p>
 
         <v-text-field
@@ -30,14 +43,13 @@
           class="mb-4"
         />
 
-        <v-file-input
-          v-model="form.photo"
-          label="Foto da barbearia"
-          prepend-icon=""
+        <v-text-field
+          v-model="form.logoUrl"
+          label="URL da foto"
+          placeholder="https://..."
           prepend-inner-icon="mdi-image-outline"
           variant="outlined"
           rounded="lg"
-          accept="image/*"
           class="mb-6"
         />
 
@@ -163,13 +175,16 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import PageWrapper from '../../components/PageWrapper'
+import { createBarbershop } from '../../services/barberShop'
 
 defineOptions({ name: 'CreateBarbershopPage' })
 
 const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
+const errorMessage = ref<string | null>(null)
 
 const dayOptions = [
   { label: 'Seg', value: 'monday' },
@@ -190,7 +205,7 @@ const serviceOptions = [
 const form = reactive({
   name: '',
   phone: '',
-  photo: null as File | null,
+  logoUrl: '',
   address: {
     street: '',
     number: '',
@@ -216,11 +231,27 @@ const handleSubmit = async () => {
   if (!valid) return
 
   loading.value = true
+  errorMessage.value = null
 
-  setTimeout(() => {
-    loading.value = false
+  try {
+    // Horário de funcionamento e serviços ainda não têm suporte no back
+    // (POST /barbershops só aceita name, address, city, phone, logoUrl)
+    await createBarbershop({
+      name: form.name,
+      phone: form.phone,
+      address: [form.address.street, form.address.number, form.address.neighborhood]
+        .filter(Boolean)
+        .join(', '),
+      city: form.address.city,
+      ...(form.logoUrl.trim() && { logoUrl: form.logoUrl.trim() }),
+    })
     router.push('/dashboard/barbershop')
-  }, 700)
+  } catch (err: unknown) {
+    const message = axios.isAxiosError(err) ? err.response?.data?.error : undefined
+    errorMessage.value = message ?? 'Não foi possível cadastrar a barbearia. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
