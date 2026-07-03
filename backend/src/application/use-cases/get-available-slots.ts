@@ -34,7 +34,6 @@ export class GetAvailableSlotsUseCase {
     const blocks = await this.availabilityRepository.findAvailableBarbers(
       input.barbershopId,
       weekday,
-      '00:00',
     )
 
     const slots: AvailableSlot[] = []

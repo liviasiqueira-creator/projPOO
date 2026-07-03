@@ -341,7 +341,7 @@ async function confirm() {
       barbershopId: barbershopId.value,
       barberUserId: selectedSlotBarberUserId.value,
       serviceId: selectedService.value.id,
-      scheduledAt: `${toISODate(selectedDate.value)}T${selectedTime.value}:00`,
+      scheduledAt: `${toISODate(selectedDate.value)}T${selectedTime.value}:00.000Z`,
     })
     successMessage.value = 'Agendamento confirmado!'
     success.value = true
