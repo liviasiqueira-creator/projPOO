@@ -5,10 +5,6 @@
       <v-col class="form-panel">
          <h1 style="color: var(--btn-accent-bg);"> Blade </h1>
          <p> <b>Gerencie sua barbearia</b> ou agende seu horário com facilidade. </p>
-         <div>
-          <span class="form-panel__metric"> <span>{{ quantityBarberShop }}+</span><br> barbearias</span>
-          <span class="form-panel__metric"> <span>{{ quantityScheduling }}+</span><br> agendamentos</span>
-         </div>
       </v-col>
       <v-col>
         <login-form />
@@ -26,8 +22,6 @@ defineOptions({
   name: 'LoginPage',
 })
 
-const quantityBarberShop = 400
-const quantityScheduling = 30
 </script>
 
 <style scoped>
