@@ -158,6 +158,7 @@ export async function buildServer(deps: ServerDeps) {
             id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string' },
+            role: { type: 'string' },
           },
         },
         401: {
@@ -181,6 +182,42 @@ export async function buildServer(deps: ServerDeps) {
     } catch {
       return reply.status(401).send({ error: 'Invalid token' })
     }
+  })
+
+  server.get('/users/:userId', {
+    schema: {
+      summary: 'Buscar dados básicos de um usuário',
+      tags: ['Users'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['userId'],
+        properties: {
+          userId: { type: 'string' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:   { type: 'string' },
+            name: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { userId } = request.params as { userId: string }
+    const user = await deps.userRepository.findById(userId)
+    if (!user) return reply.status(404).send({ error: 'User not found.' })
+
+    return { id: user.id, name: user.name }
   })
 
   server.post('/barbershops', {

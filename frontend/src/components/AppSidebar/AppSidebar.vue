@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getMe } from '../../services/auth'
 
 const route = useRoute()
+const router = useRouter()
 
 const ownerItems = [
   { title: 'Agendamentos', icon: 'mdi-calendar-clock-outline', to: '/dashboard/appointments' },
@@ -19,7 +21,21 @@ const clientItems = [
   { title: 'Explorar barbearias', icon: 'mdi-grid-large', to: '/home' },
 ]
 
-const hasBarbershop = true
+const isBarber = ref(false)
+
+onMounted(async () => {
+  try {
+    const me = await getMe()
+    isBarber.value = me.role === 'barber' || me.role === 'admin'
+  } catch {
+    logout()
+  }
+})
+
+function logout() {
+  localStorage.removeItem('accessToken')
+  router.push('/login')
+}
 
 const activePath = computed(() => route.path)
 </script>
@@ -34,13 +50,13 @@ const activePath = computed(() => route.path)
     <div class="app-sidebar__brand px-5 pt-5 pb-4">
       <p class="app-sidebar__logo"> Blade </p>
       <p class="app-sidebar__sub text-caption">
-        {{ hasBarbershop ? 'Painel da barbearia' : 'Área do cliente' }}
+        {{ isBarber ? 'Painel da barbearia' : 'Área do cliente' }}
       </p>
     </div>
 
     <v-divider class="app-sidebar__divider" />
 
-    <template v-if="hasBarbershop">
+    <template v-if="isBarber">
       <p class="app-sidebar__section-label px-5 pt-4 pb-1">Gestão</p>
       <v-list class="px-3 pt-0" nav density="comfortable">
         <v-list-item
@@ -104,6 +120,7 @@ const activePath = computed(() => route.path)
             variant="text"
             color="secondary"
             aria-label="Sair"
+            @click="logout"
           />
       </div>
     </template>
