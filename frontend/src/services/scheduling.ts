@@ -13,6 +13,20 @@ export async function getAvailableSlots(barbershopId: string, serviceId: string,
   return data
 }
 
+export interface SetBarberAvailabilityPayload {
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  startTime: string // HH:MM
+  endTime: string   // HH:MM
+}
+
+export async function setBarberAvailability(
+  barbershopId: string,
+  barberUserId: string,
+  payload: SetBarberAvailabilityPayload,
+): Promise<void> {
+  await api.post(`/barbershops/${barbershopId}/barbers/${barberUserId}/availability`, payload)
+}
+
 export type AppointmentStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
 
 export interface BookAppointmentPayload {

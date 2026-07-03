@@ -68,3 +68,13 @@ export async function listServices(barbershopId: string): Promise<Service[]> {
   const { data } = await api.get<Service[]>(`/barbershops/${barbershopId}/services`)
   return data
 }
+
+export interface HireBarberPayload {
+  barberUserId: string
+  isExclusive: boolean
+  allowedShift?: 'morning' | 'afternoon' | 'evening'
+}
+
+export async function hireBarber(barbershopId: string, payload: HireBarberPayload): Promise<void> {
+  await api.post(`/barbershops/${barbershopId}/barbers`, payload)
+}

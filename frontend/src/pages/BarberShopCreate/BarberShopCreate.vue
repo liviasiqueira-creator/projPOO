@@ -162,7 +162,9 @@
 import { ref, reactive } from 'vue'
 import axios from 'axios'
 import PageWrapper from '../../components/PageWrapper'
-import { createBarbershop } from '../../services/barberShop'
+import { createBarbershop, hireBarber } from '../../services/barberShop'
+import { setBarberAvailability, type SetBarberAvailabilityPayload } from '../../services/scheduling'
+import { getMe } from '../../services/auth'
 
 defineOptions({ name: 'CreateBarbershopPage' })
 
@@ -179,6 +181,16 @@ const dayOptions = [
   { label: 'Sáb', value: 'saturday' },
   { label: 'Dom', value: 'sunday' },
 ]
+
+const weekdayByDay: Record<string, SetBarberAvailabilityPayload['weekday']> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+}
 
 const form = reactive({
   name: '',
@@ -211,10 +223,8 @@ const handleSubmit = async () => {
   errorMessage.value = null
 
   try {
-    // Horário de funcionamento ainda não tem suporte no back
-    // (POST /barbershops só aceita name, address, city, phone, logoUrl)
     // Serviços são fixos (Corte, Barba, Sobrancelha) e criados automaticamente pelo back.
-    await createBarbershop({
+    const barbershop = await createBarbershop({
       name: form.name,
       phone: form.phone,
       address: [form.address.street, form.address.number, form.address.neighborhood]
@@ -223,8 +233,25 @@ const handleSubmit = async () => {
       city: form.address.city,
       ...(form.logoUrl.trim() && { logoUrl: form.logoUrl.trim() }),
     })
-    // Criar a barbearia promove o usuário para "barber" no back — recarrega a página inteira
-    // pra sidebar (montada uma única vez no Layout) buscar o novo role via /auth/me.
+
+    // Criar a barbearia promove o usuário para "barber" no back, mas não cria vínculo
+    // nem disponibilidade automaticamente — fazemos isso aqui com os dados já preenchidos no form.
+    const me = await getMe()
+    await hireBarber(barbershop.id, { barberUserId: me.id, isExclusive: true })
+
+    if (form.openTime && form.closeTime) {
+      await Promise.all(
+        form.workDays.map((day) =>
+          setBarberAvailability(barbershop.id, me.id, {
+            weekday: weekdayByDay[day]!,
+            startTime: form.openTime,
+            endTime: form.closeTime,
+          }),
+        ),
+      )
+    }
+
+    // Recarrega a página inteira pra sidebar (montada uma única vez no Layout) buscar o novo role via /auth/me.
     window.location.href = '/dashboard/barbershop'
   } catch (err: unknown) {
     const message = axios.isAxiosError(err) ? err.response?.data?.error : undefined
