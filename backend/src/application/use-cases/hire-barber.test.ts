@@ -22,6 +22,7 @@ const makeFakeUserRepo = (user?: typeof barber): UserRepository => ({
 const makeFakeBarbershopRepo = (barbershop?: typeof barbershop1): BarbershopRepository => ({
   findById: async (id) => id === barbershop?.id ? barbershop : null,
   findBySlug: async () => null,
+  findByOwnerUserId: async () => null,
   findAll: async () => [],
   save: async () => {},
 })

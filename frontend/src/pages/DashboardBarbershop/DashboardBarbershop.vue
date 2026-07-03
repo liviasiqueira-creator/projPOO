@@ -7,17 +7,19 @@
           Gerencie as informações e serviços da sua barbearia
         </p>
       </div>
-      <v-chip
-        :color="barbershop.isOpen ? 'success' : 'default'"
-        variant="flat"
-        class="status-chip"
-        @click="barbershop.isOpen = !barbershop.isOpen"
-      >
-        <v-icon :icon="barbershop.isOpen ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline'" size="15" class="mr-1" />
-        {{ barbershop.isOpen ? 'Aberto agora' : 'Fechado agora' }}
-      </v-chip>
     </div>
 
+    <v-row v-if="loading">
+      <v-col cols="12" class="d-flex justify-center pa-10">
+        <v-progress-circular indeterminate color="primary" />
+      </v-col>
+    </v-row>
+
+    <v-alert v-else-if="notFound" type="error" variant="tonal" rounded="lg">
+      Você ainda não tem uma barbearia cadastrada.
+    </v-alert>
+
+    <template v-else>
     <!-- Informações gerais -->
     <v-card rounded="lg" elevation="0" border class="mb-6">
       <v-card-text class="pa-5">
@@ -41,7 +43,7 @@
               <v-icon icon="mdi-storefront-outline" size="16" color="primary" />
               <div>
                 <p class="text-caption text-medium-emphasis mb-0">Nome</p>
-                <p class="text-body-2 mb-0">{{ barbershop.name }}</p>
+                <p class="text-body-2 mb-0">{{ barbershop?.name }}</p>
               </div>
             </div>
           </v-col>
@@ -50,16 +52,7 @@
               <v-icon icon="mdi-phone-outline" size="16" color="primary" />
               <div>
                 <p class="text-caption text-medium-emphasis mb-0">Telefone</p>
-                <p class="text-body-2 mb-0">{{ barbershop.phone }}</p>
-              </div>
-            </div>
-          </v-col>
-          <v-col cols="12" sm="6">
-            <div class="info-row">
-              <v-icon icon="mdi-clock-outline" size="16" color="primary" />
-              <div>
-                <p class="text-caption text-medium-emphasis mb-0">Horário</p>
-                <p class="text-body-2 mb-0">{{ formattedHours }}</p>
+                <p class="text-body-2 mb-0">{{ barbershop?.phone || '—' }}</p>
               </div>
             </div>
           </v-col>
@@ -68,7 +61,7 @@
               <v-icon icon="mdi-map-marker-outline" size="16" color="primary" />
               <div>
                 <p class="text-caption text-medium-emphasis mb-0">Endereço</p>
-                <p class="text-body-2 mb-0">{{ formattedAddress }}</p>
+                <p class="text-body-2 mb-0">{{ formattedAddress || '—' }}</p>
               </div>
             </div>
           </v-col>
@@ -104,11 +97,11 @@
           <v-card-text class="pa-4">
             <div class="d-flex align-start justify-space-between mb-2">
               <p class="text-body-2 font-weight-medium mb-0">{{ service.name }}</p>
-              <span class="service-price">R$ {{ service.price }}</span>
+              <span class="service-price">R$ {{ service.basePrice }}</span>
             </div>
             <p class="text-caption text-medium-emphasis mb-3">
               <v-icon icon="mdi-clock-outline" size="13" class="mr-1" />
-              {{ service.duration }}
+              {{ service.durationMinutes }} min
             </p>
             <div class="d-flex" style="gap: 4px;">
               <v-btn
@@ -181,82 +174,21 @@
             class="mb-3"
             hide-details
           />
-          <p class="text-caption text-medium-emphasis mb-2">Dias de funcionamento</p>
-          <div class="d-flex flex-wrap mb-3" style="gap: 6px;">
-            <v-chip
-              v-for="day in DAY_OPTIONS"
-              :key="day.value"
-              :color="infoForm.workDays.includes(day.value) ? 'primary' : undefined"
-              :variant="infoForm.workDays.includes(day.value) ? 'flat' : 'outlined'"
-              size="small"
-              style="cursor: pointer;"
-              @click="toggleInfoDay(day.value)"
-            >
-              {{ day.label }}
-            </v-chip>
-          </div>
-          <v-row class="mb-3">
-            <v-col cols="6">
-              <v-text-field
-                v-model="infoForm.openTime"
-                label="Abertura"
-                type="time"
-                variant="outlined"
-                rounded="lg"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                v-model="infoForm.closeTime"
-                label="Fechamento"
-                type="time"
-                variant="outlined"
-                rounded="lg"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-          </v-row>
           <v-text-field
-            v-model="infoForm.street"
-            label="Rua"
+            v-model="infoForm.address"
+            label="Endereço"
             variant="outlined"
             rounded="lg"
             density="comfortable"
             class="mb-3"
             hide-details
           />
-          <v-row>
-            <v-col cols="4">
-              <v-text-field
-                v-model="infoForm.number"
-                label="Número"
-                variant="outlined"
-                rounded="lg"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="8">
-              <v-text-field
-                v-model="infoForm.neighborhood"
-                label="Bairro"
-                variant="outlined"
-                rounded="lg"
-                density="comfortable"
-                hide-details
-              />
-            </v-col>
-          </v-row>
           <v-text-field
             v-model="infoForm.city"
             label="Cidade"
             variant="outlined"
             rounded="lg"
             density="comfortable"
-            class="mt-3"
             hide-details
           />
         </v-card-text>
@@ -298,9 +230,10 @@
             hide-details
           />
           <v-text-field
-            v-model="serviceForm.duration"
-            label="Duração"
-            placeholder="Ex: 30 min"
+            v-model.number="serviceForm.durationMinutes"
+            label="Duração (minutos)"
+            type="number"
+            placeholder="Ex: 30"
             variant="outlined"
             rounded="lg"
             density="comfortable"
@@ -308,7 +241,7 @@
             hide-details
           />
           <v-text-field
-            v-model.number="serviceForm.price"
+            v-model.number="serviceForm.basePrice"
             label="Preço (R$)"
             type="number"
             variant="outlined"
@@ -334,166 +267,97 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    </template>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
+import { getMyBarbershop, listServices, type BarbershopDetail, type Service } from '../../services/barberShop'
 
-interface Service {
-  id: number
-  name: string
-  duration: string
-  price: number
-}
+const loading = ref(true)
+const notFound = ref(false)
+const barbershop = ref<BarbershopDetail | null>(null)
+const services = ref<Service[]>([])
 
-const DAY_OPTIONS = [
-  { label: 'Seg', value: 'monday' },
-  { label: 'Ter', value: 'tuesday' },
-  { label: 'Qua', value: 'wednesday' },
-  { label: 'Qui', value: 'thursday' },
-  { label: 'Sex', value: 'friday' },
-  { label: 'Sáb', value: 'saturday' },
-  { label: 'Dom', value: 'sunday' },
-]
-const DAY_LABELS: Record<string, string> = Object.fromEntries(DAY_OPTIONS.map(d => [d.value, d.label]))
-
-interface Barbershop {
-  name: string
-  phone: string
-  openTime: string
-  closeTime: string
-  workDays: string[]
-  isOpen: boolean
-  address: {
-    street: string
-    number: string
-    neighborhood: string
-    city: string
+onMounted(async () => {
+  try {
+    const shop = await getMyBarbershop()
+    barbershop.value = shop
+    services.value = await listServices(shop.id)
+  } catch {
+    notFound.value = true
+  } finally {
+    loading.value = false
   }
-}
-
-// TODO: buscar do back — GET /barbershop/me
-const barbershop = reactive<Barbershop>({
-  name: 'Barbearia do João',
-  phone: '(11) 98765-4321',
-  openTime: '09:00',
-  closeTime: '20:00',
-  workDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-  isOpen: true,
-  address: {
-    street: 'Rua das Flores',
-    number: '142',
-    neighborhood: 'Centro',
-    city: 'São Paulo',
-  },
 })
-
-// TODO: buscar do back — GET /barbershop/me/services
-const services = ref<Service[]>([
-  { id: 1, name: 'Corte', duration: '30 min', price: 45 },
-  { id: 2, name: 'Barba', duration: '20 min', price: 35 },
-  { id: 3, name: 'Sobrancelha', duration: '15 min', price: 20 },
-])
 
 const formattedAddress = computed(() => {
-  const { street, number, neighborhood, city } = barbershop.address
-  return [street + ', ' + number, neighborhood, city].filter(Boolean).join(' — ')
-})
-
-const formattedHours = computed(() => {
-  const days = barbershop.workDays.map(d => DAY_LABELS[d]).join(', ')
-  return `${days} | ${barbershop.openTime} – ${barbershop.closeTime}`
+  if (!barbershop.value) return ''
+  return [barbershop.value.address, barbershop.value.city].filter(Boolean).join(' — ')
 })
 
 // --- Info dialog ---
+// Edição ainda não persiste no back (falta PUT /barbershops/:id) — só reflete localmente.
 const infoDialog = ref(false)
-const infoForm = reactive({
-  name: '', phone: '', openTime: '', closeTime: '', workDays: [] as string[],
-  street: '', number: '', neighborhood: '', city: '',
-})
+const infoForm = reactive({ name: '', phone: '', address: '', city: '' })
 
-const infoFormValid = computed(() =>
-  infoForm.name.trim() && infoForm.phone.trim() &&
-  infoForm.openTime && infoForm.closeTime &&
-  infoForm.workDays.length > 0 && infoForm.city.trim()
-)
-
-function toggleInfoDay(day: string) {
-  const idx = infoForm.workDays.indexOf(day)
-  if (idx === -1) infoForm.workDays.push(day)
-  else infoForm.workDays.splice(idx, 1)
-}
+const infoFormValid = computed(() => infoForm.name.trim() && infoForm.city.trim())
 
 function openEditInfo() {
+  if (!barbershop.value) return
   Object.assign(infoForm, {
-    name: barbershop.name,
-    phone: barbershop.phone,
-    openTime: barbershop.openTime,
-    closeTime: barbershop.closeTime,
-    workDays: [...barbershop.workDays],
-    street: barbershop.address.street,
-    number: barbershop.address.number,
-    neighborhood: barbershop.address.neighborhood,
-    city: barbershop.address.city,
+    name: barbershop.value.name,
+    phone: barbershop.value.phone ?? '',
+    address: barbershop.value.address ?? '',
+    city: barbershop.value.city ?? '',
   })
   infoDialog.value = true
 }
 
 function saveInfo() {
-  // TODO: chamar back — PUT /barbershop/me
-  Object.assign(barbershop, {
+  if (!barbershop.value) return
+  Object.assign(barbershop.value, {
     name: infoForm.name,
     phone: infoForm.phone,
-    openTime: infoForm.openTime,
-    closeTime: infoForm.closeTime,
-    workDays: [...infoForm.workDays],
-    address: {
-      street: infoForm.street,
-      number: infoForm.number,
-      neighborhood: infoForm.neighborhood,
-      city: infoForm.city,
-    },
+    address: infoForm.address,
+    city: infoForm.city,
   })
   infoDialog.value = false
 }
 
 // --- Service dialog ---
+// Ainda não persiste no back (falta PUT/DELETE de serviço) — só reflete localmente.
 const serviceDialog = ref(false)
 const editingService = ref<Service | null>(null)
-const serviceForm = reactive({ name: '', duration: '', price: 0 })
+const serviceForm = reactive({ name: '', durationMinutes: 0, basePrice: 0 })
 
 const serviceFormValid = computed(() =>
-  serviceForm.name.trim() && serviceForm.duration.trim() && serviceForm.price > 0
+  serviceForm.name.trim() && serviceForm.durationMinutes > 0 && serviceForm.basePrice > 0
 )
-
-let nextServiceId = 4
 
 function openServiceDialog(service?: Service) {
   editingService.value = service ?? null
   Object.assign(serviceForm, service
-    ? { name: service.name, duration: service.duration, price: service.price }
-    : { name: '', duration: '', price: 0 }
+    ? { name: service.name, durationMinutes: service.durationMinutes, basePrice: service.basePrice }
+    : { name: '', durationMinutes: 0, basePrice: 0 }
   )
   serviceDialog.value = true
 }
 
 function saveService() {
   if (editingService.value) {
-    // TODO: chamar back — PUT /barbershop/me/services/:id
     const idx = services.value.findIndex(s => s.id === editingService.value!.id)
     if (idx !== -1) {
       services.value[idx] = { ...editingService.value, ...serviceForm }
     }
   } else {
-    // TODO: chamar back — POST /barbershop/me/services
-    services.value.push({ id: nextServiceId++, ...serviceForm })
+    services.value.push({ id: crypto.randomUUID(), ...serviceForm })
   }
   serviceDialog.value = false
 }
 
-function removeService(id: number) {
-  // TODO: chamar back — DELETE /barbershop/me/services/:id
+function removeService(id: string) {
   services.value = services.value.filter(s => s.id !== id)
 }
 </script>
@@ -503,11 +367,6 @@ function removeService(id: number) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-}
-
-.status-chip {
-  cursor: pointer;
-  margin-top: 4px;
 }
 
 .info-row {

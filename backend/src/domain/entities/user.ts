@@ -34,4 +34,8 @@ export class User {
       props.avatarUrl ? new AvatarUrl(props.avatarUrl) : undefined,
     )
   }
+
+  withRole(role: UserRole): User {
+    return new User(this.id, this.email, this.passwordHash, this.name, this.createdAt, role, this.isActive, this.phone, this.avatarUrl)
+  }
 }

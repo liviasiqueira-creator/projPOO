@@ -154,7 +154,8 @@ const handleSubmit = async () => {
       const { accessToken } = await login({ email: email.value, password: password.value })
       localStorage.setItem('accessToken', accessToken)
     } else {
-      await createUser({ name: name.value, email: email.value, password: password.value, role: 'client' })
+      const { accessToken } = await createUser({ name: name.value, email: email.value, password: password.value, role: 'client' })
+      localStorage.setItem('accessToken', accessToken)
     }
     router.push('/home')
   } catch {

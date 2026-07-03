@@ -11,6 +11,7 @@ export type BarbershopFilters = {
 export interface BarbershopRepository {
   findById(id: string): Promise<Barbershop | null>
   findBySlug(slug: string): Promise<Barbershop | null>
+  findByOwnerUserId(ownerUserId: string): Promise<Barbershop | null>
   findAll(filters?: BarbershopFilters): Promise<Barbershop[]>
   save(barbershop: Barbershop): Promise<void>
 }

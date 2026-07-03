@@ -1,6 +1,6 @@
 <template>
   <PageWrapper>
-    <v-card rounded="lg" elevation="0" class="create-card pa-6" width="100%" max-width="600">
+    <v-card rounded="lg" elevation="0" class="create-card pa-6" width="100%" max-width="920">
       <div class="mb-6">
         <h1 class="text-h5 font-weight-medium">Cadastrar barbearia</h1>
         <p class="text-body-2 text-medium-emphasis mt-1">Preencha as informações do seu estabelecimento.</p>
@@ -21,137 +21,144 @@
           {{ errorMessage }}
         </v-alert>
 
-        <p class="section-label mb-3">Informações básicas</p>
+        <v-row>
+          <v-col cols="12" md="6">
+            <p class="section-label mb-3">Informações básicas</p>
 
-        <v-text-field
-          v-model="form.name"
-          label="Nome da barbearia"
-          prepend-inner-icon="mdi-store-outline"
-          variant="outlined"
-          rounded="lg"
-          :rules="required"
-          class="mb-4"
-        />
-
-        <v-text-field
-          v-model="form.phone"
-          label="Telefone"
-          prepend-inner-icon="mdi-phone-outline"
-          variant="outlined"
-          rounded="lg"
-          :rules="required"
-          class="mb-4"
-        />
-
-        <v-text-field
-          v-model="form.logoUrl"
-          label="URL da foto"
-          placeholder="https://..."
-          prepend-inner-icon="mdi-image-outline"
-          variant="outlined"
-          rounded="lg"
-          class="mb-6"
-        />
-
-        <p class="section-label mb-3">Endereço</p>
-
-        <v-row dense>
-          <v-col cols="12" sm="8">
             <v-text-field
-              v-model="form.address.street"
-              label="Logradouro"
+              v-model="form.name"
+              label="Nome da barbearia"
+              prepend-inner-icon="mdi-store-outline"
               variant="outlined"
               rounded="lg"
               :rules="required"
+              class="mb-4"
             />
-          </v-col>
-          <v-col cols="12" sm="4">
+
             <v-text-field
-              v-model="form.address.number"
-              label="Número"
+              v-model="form.phone"
+              label="Telefone"
+              prepend-inner-icon="mdi-phone-outline"
               variant="outlined"
               rounded="lg"
               :rules="required"
+              class="mb-4"
             />
-          </v-col>
-          <v-col cols="12" sm="6">
+
             <v-text-field
-              v-model="form.address.neighborhood"
-              label="Bairro"
+              v-model="form.logoUrl"
+              label="URL da foto"
+              placeholder="https://..."
+              prepend-inner-icon="mdi-image-outline"
               variant="outlined"
               rounded="lg"
+              class="mb-6"
             />
+
+            <p class="section-label mb-3">Endereço</p>
+
+            <v-row dense>
+              <v-col cols="12" sm="8">
+                <v-text-field
+                  v-model="form.address.street"
+                  label="Logradouro"
+                  variant="outlined"
+                  rounded="lg"
+                  :rules="required"
+                />
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model="form.address.number"
+                  label="Número"
+                  variant="outlined"
+                  rounded="lg"
+                  :rules="required"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.address.neighborhood"
+                  label="Bairro"
+                  variant="outlined"
+                  rounded="lg"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.address.city"
+                  label="Cidade"
+                  variant="outlined"
+                  rounded="lg"
+                  :rules="required"
+                />
+              </v-col>
+            </v-row>
           </v-col>
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="form.address.city"
-              label="Cidade"
-              variant="outlined"
-              rounded="lg"
-              :rules="required"
-            />
-          </v-col>
-        </v-row>
 
-        <p class="section-label mb-3 mt-2">Horário de funcionamento</p>
+          <v-col cols="12" md="6">
+            <p class="section-label mb-3">Horário de funcionamento</p>
 
-        <p class="text-body-2 text-medium-emphasis mb-2">Dias de funcionamento</p>
-        <div class="d-flex flex-wrap mb-4" style="gap: 6px;">
-          <v-chip
-            v-for="day in dayOptions"
-            :key="day.value"
-            :color="form.workDays.includes(day.value) ? 'primary' : undefined"
-            :variant="form.workDays.includes(day.value) ? 'flat' : 'outlined'"
-            size="small"
-            style="cursor: pointer;"
-            @click="toggleWorkDay(day.value)"
-          >
-            {{ day.label }}
-          </v-chip>
-        </div>
+            <p class="text-body-2 text-medium-emphasis mb-2">Dias de funcionamento</p>
+            <div class="d-flex flex-wrap mb-4" style="gap: 6px;">
+              <v-chip
+                v-for="day in dayOptions"
+                :key="day.value"
+                :color="form.workDays.includes(day.value) ? 'primary' : undefined"
+                :variant="form.workDays.includes(day.value) ? 'flat' : 'outlined'"
+                size="small"
+                style="cursor: pointer;"
+                @click="toggleWorkDay(day.value)"
+              >
+                {{ day.label }}
+              </v-chip>
+            </div>
 
-        <v-row dense class="mb-2">
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="form.openTime"
-              label="Hora de abertura"
-              type="time"
-              prepend-inner-icon="mdi-clock-outline"
-              variant="outlined"
-              rounded="lg"
-              :rules="required"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="form.closeTime"
-              label="Hora de fechamento"
-              type="time"
-              prepend-inner-icon="mdi-clock-check-outline"
-              variant="outlined"
-              rounded="lg"
-              :rules="required"
-            />
-          </v-col>
-        </v-row>
+            <v-row dense class="mb-2">
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.openTime"
+                  label="Hora de abertura"
+                  type="time"
+                  prepend-inner-icon="mdi-clock-outline"
+                  variant="outlined"
+                  rounded="lg"
+                  :rules="required"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.closeTime"
+                  label="Hora de fechamento"
+                  type="time"
+                  prepend-inner-icon="mdi-clock-check-outline"
+                  variant="outlined"
+                  rounded="lg"
+                  :rules="required"
+                />
+              </v-col>
+            </v-row>
 
-        <p class="section-label mb-3">Serviços oferecidos</p>
+            <p class="section-label mb-3 mt-2">Serviços oferecidos</p>
 
-        <v-row dense class="mb-6">
-          <v-col
-            v-for="service in serviceOptions"
-            :key="service.value"
-            cols="6"
-            sm="4"
-          >
-            <v-checkbox
-              v-model="form.services"
-              :label="service.label"
-              :value="service.value"
-              color="primary"
-              density="comfortable"
-              hide-details
-            />
+            <v-row dense>
+              <v-col
+                v-for="service in serviceOptions"
+                :key="service.value"
+                cols="6"
+                sm="4"
+                md="6"
+              >
+                <v-checkbox
+                  v-model="form.services"
+                  :label="service.label"
+                  :value="service.value"
+                  color="primary"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
           </v-col>
         </v-row>
 
@@ -163,7 +170,7 @@
           rounded="lg"
           size="large"
           :loading="loading"
-          class="text-none"
+          class="text-none mt-4"
         >
           Cadastrar barbearia
         </v-btn>
@@ -174,14 +181,12 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 import axios from 'axios'
 import PageWrapper from '../../components/PageWrapper'
 import { createBarbershop } from '../../services/barberShop'
 
 defineOptions({ name: 'CreateBarbershopPage' })
 
-const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -245,7 +250,9 @@ const handleSubmit = async () => {
       city: form.address.city,
       ...(form.logoUrl.trim() && { logoUrl: form.logoUrl.trim() }),
     })
-    router.push('/dashboard/barbershop')
+    // Criar a barbearia promove o usuário para "barber" no back — recarrega a página inteira
+    // pra sidebar (montada uma única vez no Layout) buscar o novo role via /auth/me.
+    window.location.href = '/dashboard/barbershop'
   } catch (err: unknown) {
     const message = axios.isAxiosError(err) ? err.response?.data?.error : undefined
     errorMessage.value = message ?? 'Não foi possível cadastrar a barbearia. Tente novamente.'
