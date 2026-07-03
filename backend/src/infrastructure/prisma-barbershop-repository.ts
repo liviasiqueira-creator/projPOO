@@ -25,6 +25,11 @@ export class PrismaBarbershopRepository implements BarbershopRepository {
     return row ? this.toEntity(row) : null
   }
 
+  async findByOwnerUserId(ownerUserId: string): Promise<Barbershop | null> {
+    const row = await this.db.barbershop.findFirst({ where: { ownerUserId } })
+    return row ? this.toEntity(row) : null
+  }
+
   async findAll(filters?: BarbershopFilters): Promise<Barbershop[]> {
     const rows = filters?.city !== undefined
       ? await this.db.barbershop.findMany({ where: { city: filters.city } })
@@ -55,6 +60,7 @@ export class PrismaBarbershopRepository implements BarbershopRepository {
         logoUrl: barbershop.logoUrl?.value ?? null,
         latitude: barbershop.latitude ?? null,
         longitude: barbershop.longitude ?? null,
+        ownerUserId: barbershop.ownerUserId ?? null,
       },
       update: {
         name: barbershop.name,
@@ -65,6 +71,7 @@ export class PrismaBarbershopRepository implements BarbershopRepository {
         logoUrl: barbershop.logoUrl?.value ?? null,
         latitude: barbershop.latitude ?? null,
         longitude: barbershop.longitude ?? null,
+        ownerUserId: barbershop.ownerUserId ?? null,
       },
     })
   }
@@ -72,6 +79,7 @@ export class PrismaBarbershopRepository implements BarbershopRepository {
   private toEntity(row: {
     id: string; name: string; slug: string; address: string | null; city: string | null
     phone: string | null; logoUrl: string | null; latitude: number | null; longitude: number | null
+    ownerUserId: string | null
   }): Barbershop {
     return Barbershop.restore({
       id: row.id,
@@ -83,6 +91,7 @@ export class PrismaBarbershopRepository implements BarbershopRepository {
       ...(row.logoUrl && { logoUrl: row.logoUrl }),
       ...(row.latitude !== null && { latitude: row.latitude }),
       ...(row.longitude !== null && { longitude: row.longitude }),
+      ...(row.ownerUserId && { ownerUserId: row.ownerUserId }),
     })
   }
 }

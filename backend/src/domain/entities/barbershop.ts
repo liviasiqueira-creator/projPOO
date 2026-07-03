@@ -28,6 +28,7 @@ export class Barbershop {
     logoUrl?: string
     latitude?: number
     longitude?: number
+    ownerUserId?: string
   }): Barbershop {
     return new Barbershop(
       props.id,
@@ -41,6 +42,7 @@ export class Barbershop {
       props.logoUrl ? new AvatarUrl(props.logoUrl) : undefined,
       props.latitude ?? undefined,
       props.longitude ?? undefined,
+      props.ownerUserId,
     )
   }
 
