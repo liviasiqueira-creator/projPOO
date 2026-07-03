@@ -20,9 +20,9 @@ export class PrismaBarberAvailabilityRepository implements BarberAvailabilityRep
     return rows.map((r) => this.toEntity(r))
   }
 
-  async findAvailableBarbers(barbershopId: string, weekday: Weekday, time: string): Promise<BarberAvailability[]> {
+  async findAvailableBarbers(barbershopId: string, weekday: Weekday): Promise<BarberAvailability[]> {
     const rows = await this.db.barberAvailability.findMany({
-      where: { barbershopId, weekday, startTime: { lte: time } },
+      where: { barbershopId, weekday },
     })
     return rows.map((r) => this.toEntity(r))
   }

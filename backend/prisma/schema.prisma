@@ -30,8 +30,9 @@ model Barbershop {
   city      String?
   phone     String?
   logoUrl   String?
-  latitude  Float?
-  longitude Float?
+  latitude     Float?
+  longitude    Float?
+  ownerUserId  String?
 
   services     Service[]
   memberships  BarberMembership[]
