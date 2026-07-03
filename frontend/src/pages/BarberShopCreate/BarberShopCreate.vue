@@ -138,27 +138,6 @@
                 />
               </v-col>
             </v-row>
-
-            <p class="section-label mb-3 mt-2">Serviços oferecidos</p>
-
-            <v-row dense>
-              <v-col
-                v-for="service in serviceOptions"
-                :key="service.value"
-                cols="6"
-                sm="4"
-                md="6"
-              >
-                <v-checkbox
-                  v-model="form.services"
-                  :label="service.label"
-                  :value="service.value"
-                  color="primary"
-                  density="comfortable"
-                  hide-details
-                />
-              </v-col>
-            </v-row>
           </v-col>
         </v-row>
 
@@ -201,12 +180,6 @@ const dayOptions = [
   { label: 'Dom', value: 'sunday' },
 ]
 
-const serviceOptions = [
-  { label: 'Corte', value: 'haircut' },
-  { label: 'Barba', value: 'beard' },
-  { label: 'Sobrancelha', value: 'eyebrow' },
-]
-
 const form = reactive({
   name: '',
   phone: '',
@@ -220,7 +193,6 @@ const form = reactive({
   workDays: [] as string[],
   openTime: '',
   closeTime: '',
-  services: [] as string[],
 })
 
 function toggleWorkDay(day: string) {
@@ -239,8 +211,9 @@ const handleSubmit = async () => {
   errorMessage.value = null
 
   try {
-    // Horário de funcionamento e serviços ainda não têm suporte no back
+    // Horário de funcionamento ainda não tem suporte no back
     // (POST /barbershops só aceita name, address, city, phone, logoUrl)
+    // Serviços são fixos (Corte, Barba, Sobrancelha) e criados automaticamente pelo back.
     await createBarbershop({
       name: form.name,
       phone: form.phone,

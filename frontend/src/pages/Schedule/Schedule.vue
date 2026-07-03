@@ -65,46 +65,8 @@
           </v-col>
         </v-row>
 
-        <p class="text-body-2 text-medium-emphasis mb-6" style="font-size: 12px;">
-          Ou selecione uma promoção abaixo
-        </p>
-
         <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
-          2. Promoções da barbearia
-        </p>
-        <v-row class="mb-6">
-          <v-col
-            v-for="promo in promos"
-            :key="promo.name"
-            cols="12"
-            sm="6"
-          >
-            <v-card
-              rounded="lg"
-              elevation="0"
-              border
-              class="service-option promo-option"
-              :class="{ 'service-option--selected': selectedPromo?.name === promo.name }"
-              @click="selectPromo(promo)"
-            >
-              <v-card-text class="pa-4">
-                <div class="d-flex align-center justify-space-between mb-1">
-                  <p class="text-body-2 font-weight-medium">{{ promo.name }}</p>
-                  <v-chip color="primary" size="x-small" variant="tonal">Promo</v-chip>
-                </div>
-                <p class="text-caption text-medium-emphasis mb-2">{{ promo.duration }}</p>
-                <div class="d-flex align-center" style="gap: 8px;">
-                  <span class="promo-price">R$ {{ promo.price }}</span>
-                  <span class="promo-original">R$ {{ promo.originalPrice }}</span>
-                  <v-chip color="success" size="x-small" variant="tonal">-{{ promo.discount }}%</v-chip>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
-          3. Data
+          2. Data
         </p>
         <v-card rounded="lg" elevation="0" border class="mb-6 date-picker-card">
           <v-date-picker
@@ -119,15 +81,10 @@
         </v-card>
 
         <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
-          4. Horário
+          3. Horário
         </p>
 
-        <div v-if="selectedPromo" class="mb-8">
-          <p class="text-body-2 text-medium-emphasis">
-            Agendamento com promoção ainda não está disponível — selecione um serviço para ver horários.
-          </p>
-        </div>
-        <div v-else-if="!selectedService" class="mb-8">
+        <div v-if="!selectedService" class="mb-8">
           <p class="text-body-2 text-medium-emphasis">Selecione um serviço para ver os horários disponíveis.</p>
         </div>
         <div v-else-if="loadingSlots" class="mb-8 d-flex pa-4">
@@ -215,20 +172,6 @@ const router = useRouter()
 const barbershopId = computed(() => String(route.params.id ?? ''))
 const barbershopName = ref('')
 
-// Promoções ainda não têm suporte no back (não existe entidade/endpoint de promoção)
-interface Promo {
-  name: string
-  duration: string
-  price: number
-  originalPrice: number
-  discount: number
-}
-
-const promos: Promo[] = [
-  { name: 'Corte + Barba', duration: '45 min', price: 65, originalPrice: 80, discount: 19 },
-  { name: 'Corte + Sobrancelha', duration: '40 min', price: 55, originalPrice: 65, discount: 15 },
-]
-
 const services = ref<Service[]>([])
 const loadingServices = ref(true)
 const availableSlots = ref<AvailableSlot[]>([])
@@ -236,7 +179,6 @@ const loadingSlots = ref(false)
 const errorMessage = ref<string | null>(null)
 
 const selectedService = ref<Service | null>(null)
-const selectedPromo = ref<Promo | null>(null)
 const selectedDate = ref<Date>(new Date())
 const selectedTime = ref<string | null>(null)
 const loading = ref(false)
@@ -262,18 +204,9 @@ onMounted(async () => {
 
 function selectService(service: Service) {
   selectedService.value = service
-  selectedPromo.value = null
-}
-
-function selectPromo(promo: Promo) {
-  selectedPromo.value = promo
-  selectedService.value = null
 }
 
 const activeSelectionDisplay = computed(() => {
-  if (selectedPromo.value) {
-    return { name: selectedPromo.value.name, durationLabel: selectedPromo.value.duration, price: selectedPromo.value.price }
-  }
   if (selectedService.value) {
     return {
       name: selectedService.value.name,
@@ -291,7 +224,6 @@ function toISODate(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-// Horários dependem de um serviço real (têm duração cadastrada) — promoções não têm slot próprio
 watch([selectedDate, selectedService], async () => {
   selectedTime.value = null
   availableSlots.value = []
@@ -376,18 +308,6 @@ async function confirm() {
   font-size: 15px;
   font-weight: 500;
   color: rgb(var(--v-theme-primary));
-}
-
-.promo-price {
-  font-size: 15px;
-  font-weight: 500;
-  color: rgb(var(--v-theme-primary));
-}
-
-.promo-original {
-  font-size: 12px;
-  color: rgb(var(--v-theme-secondary));
-  text-decoration: line-through;
 }
 
 .date-picker-card {

@@ -13,7 +13,6 @@ import type { TokenSigner } from '../application/ports/token-signer'
 import { LoginUseCase } from '../application/use-cases/login'
 import { RegisterUseCase } from '../application/use-cases/register'
 import { CreateBarbershopUseCase } from '../application/use-cases/create-barbershop'
-import { CreateServiceUseCase } from '../application/use-cases/create-service'
 import { HireBarberUseCase } from '../application/use-cases/hire-barber'
 import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclusivity'
 import { BookAppointmentUseCase } from '../application/use-cases/book-appointment'
@@ -276,7 +275,7 @@ export async function buildServer(deps: ServerDeps) {
       logoUrl?: string
     }
 
-    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository, deps.userRepository)
+    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository, deps.userRepository, deps.serviceRepository)
     try {
       const result = await useCase.execute({ ...body, ownerUserId })
       return reply.status(201).send(result)
@@ -343,72 +342,6 @@ export async function buildServer(deps: ServerDeps) {
       latitude: b.latitude,
       longitude: b.longitude,
     }))
-  })
-
-  server.post('/barbershops/:barbershopId/services', {
-    schema: {
-      summary: 'Cadastrar serviço em uma barbearia',
-      tags: ['Barbershops'],
-      security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        required: ['barbershopId'],
-        properties: {
-          barbershopId: { type: 'string' },
-        },
-      },
-      body: {
-        type: 'object',
-        required: ['name', 'durationMinutes', 'basePrice'],
-        properties: {
-          name:            { type: 'string', minLength: 1 },
-          durationMinutes: { type: 'number', minimum: 1 },
-          basePrice:       { type: 'number', minimum: 0 },
-          description:     { type: 'string' },
-        },
-      },
-      response: {
-        201: {
-          type: 'object',
-          properties: {
-            id:              { type: 'string' },
-            barbershopId:    { type: 'string' },
-            name:            { type: 'string' },
-            durationMinutes: { type: 'number' },
-            basePrice:       { type: 'number' },
-          },
-        },
-        401: { type: 'object', properties: { error: { type: 'string' } } },
-        404: { type: 'object', properties: { error: { type: 'string' } } },
-      },
-    },
-  }, async (request, reply) => {
-    const auth = request.headers.authorization
-    if (!auth?.startsWith('Bearer ')) {
-      return reply.status(401).send({ error: 'Missing token' })
-    }
-    try {
-      await deps.signer.verify(auth.slice(7))
-    } catch {
-      return reply.status(401).send({ error: 'Invalid token' })
-    }
-
-    const { barbershopId } = request.params as { barbershopId: string }
-    const body = request.body as {
-      name: string
-      durationMinutes: number
-      basePrice: number
-      description?: string
-    }
-
-    const useCase = new CreateServiceUseCase(deps.serviceRepository, deps.barbershopRepository)
-    try {
-      const result = await useCase.execute({ barbershopId, ...body })
-      return reply.status(201).send(result)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create service.'
-      return reply.status(404).send({ error: message })
-    }
   })
 
   server.get('/barbershops/me', {

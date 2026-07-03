@@ -4,6 +4,8 @@ import { CreateBarbershopUseCase } from './create-barbershop'
 import type { BarbershopRepository } from '../../domain/repositories/barbershop-repository'
 import type { Barbershop } from '../../domain/entities/barbershop'
 import type { UserRepository } from '../../domain/repositories/user-repository'
+import type { ServiceRepository } from '../../domain/repositories/service-repository'
+import type { Service } from '../../domain/entities/service'
 import { User, UserRole } from '../../domain/entities/user'
 
 const makeFakeRepo = (existing?: Barbershop): BarbershopRepository => ({
@@ -23,13 +25,23 @@ const makeFakeUserRepo = (user?: User): UserRepository => {
   }
 }
 
+const makeFakeServiceRepo = (): ServiceRepository & { saved: Service[] } => {
+  const saved: Service[] = []
+  return {
+    saved,
+    findById: async () => null,
+    findByBarbershopId: async (barbershopId) => saved.filter((s) => s.barbershopId === barbershopId),
+    save: async (service) => { saved.push(service) },
+  }
+}
+
 const OWNER_ID = 'owner-1'
 const buildOwner = (role?: UserRole) =>
   User.create({ id: OWNER_ID, email: 'owner@example.com', passwordHash: 'hash', name: 'Owner', role })
 
 describe('CreateBarbershopUseCase', () => {
   test('cria barbearia com dados válidos', async () => {
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()))
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), makeFakeServiceRepo())
     const result = await useCase.execute({ name: 'Barbearia do João', ownerUserId: OWNER_ID })
 
     assert.ok(result.id)
@@ -38,26 +50,27 @@ describe('CreateBarbershopUseCase', () => {
   })
 
   test('gera slug automaticamente a partir do nome', async () => {
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()))
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), makeFakeServiceRepo())
     const result = await useCase.execute({ name: 'Corte & Estilo', ownerUserId: OWNER_ID })
 
     assert.equal(result.slug, 'corte-estilo')
   })
 
   test('gera slug removendo acentos', async () => {
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()))
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), makeFakeServiceRepo())
     const result = await useCase.execute({ name: 'Barbearia Ação', ownerUserId: OWNER_ID })
 
     assert.equal(result.slug, 'barbearia-acao')
   })
 
   test('lança erro se já existe barbearia com o mesmo nome', async () => {
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()))
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), makeFakeServiceRepo())
     await useCase.execute({ name: 'Barbearia Top', ownerUserId: OWNER_ID })
 
     const useCaseWithExisting = new CreateBarbershopUseCase(
       makeFakeRepo(await buildExistingBarbershop()),
       makeFakeUserRepo(buildOwner()),
+      makeFakeServiceRepo(),
     )
 
     await assert.rejects(
@@ -67,7 +80,7 @@ describe('CreateBarbershopUseCase', () => {
   })
 
   test('lança erro se nome estiver vazio', async () => {
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()))
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), makeFakeServiceRepo())
     await assert.rejects(
       () => useCase.execute({ name: '', ownerUserId: OWNER_ID }),
       /cannot be empty/
@@ -76,7 +89,7 @@ describe('CreateBarbershopUseCase', () => {
 
   test('promove o criador de client para barber', async () => {
     const userRepo = makeFakeUserRepo(buildOwner(UserRole.Client))
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), userRepo)
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), userRepo, makeFakeServiceRepo())
     await useCase.execute({ name: 'Barbearia Nova', ownerUserId: OWNER_ID })
 
     const owner = await userRepo.findById(OWNER_ID)
@@ -85,11 +98,21 @@ describe('CreateBarbershopUseCase', () => {
 
   test('não altera role de quem já é admin', async () => {
     const userRepo = makeFakeUserRepo(buildOwner(UserRole.Admin))
-    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), userRepo)
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), userRepo, makeFakeServiceRepo())
     await useCase.execute({ name: 'Barbearia Admin', ownerUserId: OWNER_ID })
 
     const owner = await userRepo.findById(OWNER_ID)
     assert.equal(owner?.role, UserRole.Admin)
+  })
+
+  test('cria os serviços padrão (Corte, Barba, Sobrancelha) para a barbearia', async () => {
+    const serviceRepo = makeFakeServiceRepo()
+    const useCase = new CreateBarbershopUseCase(makeFakeRepo(), makeFakeUserRepo(buildOwner()), serviceRepo)
+    const result = await useCase.execute({ name: 'Barbearia dos Serviços', ownerUserId: OWNER_ID })
+
+    const created = await serviceRepo.findByBarbershopId(result.id)
+    assert.equal(created.length, 3)
+    assert.deepEqual(created.map((s) => s.name).sort(), ['Barba', 'Corte', 'Sobrancelha'])
   })
 })
 

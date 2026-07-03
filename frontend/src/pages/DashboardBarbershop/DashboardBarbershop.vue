@@ -72,20 +72,9 @@
     <!-- Serviços -->
     <div class="d-flex align-center justify-space-between mb-4">
       <p class="text-body-1 font-weight-medium">Serviços</p>
-      <v-btn
-        color="primary"
-        variant="flat"
-        rounded="lg"
-        size="small"
-        prepend-icon="mdi-plus"
-        class="text-none"
-        @click="openServiceDialog()"
-      >
-        Novo serviço
-      </v-btn>
     </div>
 
-    <v-row v-if="services.length > 0">
+    <v-row>
       <v-col
         v-for="service in services"
         :key="service.id"
@@ -99,55 +88,14 @@
               <p class="text-body-2 font-weight-medium mb-0">{{ service.name }}</p>
               <span class="service-price">R$ {{ service.basePrice }}</span>
             </div>
-            <p class="text-caption text-medium-emphasis mb-3">
+            <p class="text-caption text-medium-emphasis mb-0">
               <v-icon icon="mdi-clock-outline" size="13" class="mr-1" />
               {{ service.durationMinutes }} min
             </p>
-            <div class="d-flex" style="gap: 4px;">
-              <v-btn
-                variant="text"
-                size="x-small"
-                color="secondary"
-                class="text-none"
-                prepend-icon="mdi-pencil-outline"
-                @click="openServiceDialog(service)"
-              >
-                Editar
-              </v-btn>
-              <v-btn
-                variant="text"
-                size="x-small"
-                color="error"
-                class="text-none"
-                prepend-icon="mdi-delete-outline"
-                @click="removeService(service.id)"
-              >
-                Remover
-              </v-btn>
-            </div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
-
-    <div v-else class="services-empty">
-      <v-icon icon="mdi-scissors-cutting" size="40" color="primary" class="mb-3" />
-      <p class="text-body-2 font-weight-medium">Nenhum serviço cadastrado</p>
-      <p class="text-caption text-medium-emphasis mt-1">
-        Adicione os serviços que sua barbearia oferece.
-      </p>
-      <v-btn
-        color="primary"
-        variant="flat"
-        rounded="lg"
-        prepend-icon="mdi-plus"
-        class="text-none mt-4"
-        size="small"
-        @click="openServiceDialog()"
-      >
-        Novo serviço
-      </v-btn>
-    </div>
 
     <!-- Dialog: editar informações -->
     <v-dialog v-model="infoDialog" max-width="480" rounded="lg">
@@ -210,63 +158,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Dialog: serviço -->
-    <v-dialog v-model="serviceDialog" max-width="400" rounded="lg">
-      <v-card rounded="lg">
-        <v-card-title class="pa-5 pb-2">
-          <span class="text-h6 font-weight-medium">
-            {{ editingService ? 'Editar serviço' : 'Novo serviço' }}
-          </span>
-        </v-card-title>
-        <v-card-text class="pa-5 pt-2">
-          <v-text-field
-            v-model="serviceForm.name"
-            label="Nome do serviço"
-            placeholder="Ex: Corte"
-            variant="outlined"
-            rounded="lg"
-            density="comfortable"
-            class="mb-3"
-            hide-details
-          />
-          <v-text-field
-            v-model.number="serviceForm.durationMinutes"
-            label="Duração (minutos)"
-            type="number"
-            placeholder="Ex: 30"
-            variant="outlined"
-            rounded="lg"
-            density="comfortable"
-            class="mb-3"
-            hide-details
-          />
-          <v-text-field
-            v-model.number="serviceForm.basePrice"
-            label="Preço (R$)"
-            type="number"
-            variant="outlined"
-            rounded="lg"
-            density="comfortable"
-            hide-details
-          />
-        </v-card-text>
-        <v-card-actions class="pa-5 pt-0" style="gap: 8px;">
-          <v-btn variant="text" rounded="lg" class="text-none flex-1-1" @click="serviceDialog = false">
-            Cancelar
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            rounded="lg"
-            class="text-none flex-1-1"
-            :disabled="!serviceFormValid"
-            @click="saveService"
-          >
-            Salvar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
     </template>
   </v-container>
 </template>
@@ -326,40 +217,6 @@ function saveInfo() {
   infoDialog.value = false
 }
 
-// --- Service dialog ---
-// Ainda não persiste no back (falta PUT/DELETE de serviço) — só reflete localmente.
-const serviceDialog = ref(false)
-const editingService = ref<Service | null>(null)
-const serviceForm = reactive({ name: '', durationMinutes: 0, basePrice: 0 })
-
-const serviceFormValid = computed(() =>
-  serviceForm.name.trim() && serviceForm.durationMinutes > 0 && serviceForm.basePrice > 0
-)
-
-function openServiceDialog(service?: Service) {
-  editingService.value = service ?? null
-  Object.assign(serviceForm, service
-    ? { name: service.name, durationMinutes: service.durationMinutes, basePrice: service.basePrice }
-    : { name: '', durationMinutes: 0, basePrice: 0 }
-  )
-  serviceDialog.value = true
-}
-
-function saveService() {
-  if (editingService.value) {
-    const idx = services.value.findIndex(s => s.id === editingService.value!.id)
-    if (idx !== -1) {
-      services.value[idx] = { ...editingService.value, ...serviceForm }
-    }
-  } else {
-    services.value.push({ id: crypto.randomUUID(), ...serviceForm })
-  }
-  serviceDialog.value = false
-}
-
-function removeService(id: string) {
-  services.value = services.value.filter(s => s.id !== id)
-}
 </script>
 
 <style scoped>
@@ -385,13 +242,5 @@ function removeService(id: string) {
   font-weight: 500;
   color: rgb(var(--v-theme-primary));
   white-space: nowrap;
-}
-
-.services-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 60px 24px;
 }
 </style>
