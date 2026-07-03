@@ -17,9 +17,9 @@ export class InMemoryBarberAvailabilityRepository implements BarberAvailabilityR
     return this.blocks.filter((b) => b.barbershopId === barbershopId)
   }
 
-  async findAvailableBarbers(barbershopId: string, weekday: Weekday, time: string): Promise<BarberAvailability[]> {
+  async findAvailableBarbers(barbershopId: string, weekday: Weekday): Promise<BarberAvailability[]> {
     return this.blocks.filter(
-      (b) => b.barbershopId === barbershopId && b.weekday === weekday && b.startTime <= time,
+      (b) => b.barbershopId === barbershopId && b.weekday === weekday,
     )
   }
 

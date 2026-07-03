@@ -168,8 +168,8 @@ async function enrich(raw: Appointment[]): Promise<ClientAppointment[]> {
       id: a.id,
       barbershopName: shop?.name ?? 'Barbearia',
       service: shop?.serviceNames.get(a.serviceId) ?? 'Serviço',
-      date: `${scheduledAt.getFullYear()}-${String(scheduledAt.getMonth() + 1).padStart(2, '0')}-${String(scheduledAt.getDate()).padStart(2, '0')}`,
-      time: `${String(scheduledAt.getHours()).padStart(2, '0')}:${String(scheduledAt.getMinutes()).padStart(2, '0')}`,
+      date: `${scheduledAt.getUTCFullYear()}-${String(scheduledAt.getUTCMonth() + 1).padStart(2, '0')}-${String(scheduledAt.getUTCDate()).padStart(2, '0')}`,
+      time: `${String(scheduledAt.getUTCHours()).padStart(2, '0')}:${String(scheduledAt.getUTCMinutes()).padStart(2, '0')}`,
       price: a.priceSnapshot,
       status: a.status,
     }
