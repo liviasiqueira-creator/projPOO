@@ -17,6 +17,32 @@ export class Barbershop {
     readonly longitude?: number,
   ) {}
 
+  static restore(props: {
+    id: string
+    name: string
+    slug: string
+    address?: string
+    city?: string
+    phone?: string
+    logoUrl?: string
+    latitude?: number
+    longitude?: number
+  }): Barbershop {
+    return new Barbershop(
+      props.id,
+      props.name,
+      new Slug(props.slug),
+      new Date(),
+      true,
+      props.address ?? undefined,
+      props.city ?? undefined,
+      props.phone ? new Phone(props.phone) : undefined,
+      props.logoUrl ? new AvatarUrl(props.logoUrl) : undefined,
+      props.latitude ?? undefined,
+      props.longitude ?? undefined,
+    )
+  }
+
   static create(props: {
     id: string
     name: string
