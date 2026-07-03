@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String  @id
+  email        String  @unique
+  passwordHash String
+  name         String
+  role         String  @default("client") // client | admin | barber
+  phone        String?
+  avatarUrl    String?
+
+  memberships  BarberMembership[]
+  availability BarberAvailability[]
+  asBarber     Appointment[]        @relation("AppointmentBarber")
+  asClient     Appointment[]        @relation("AppointmentClient")
+}
+
+model Barbershop {
+  id        String  @id
+  name      String
+  slug      String  @unique
+  address   String?
+  city      String?
+  phone     String?
+  logoUrl   String?
+  latitude  Float?
+  longitude Float?
+
+  services     Service[]
+  memberships  BarberMembership[]
+  availability BarberAvailability[]
+  appointments Appointment[]
+}
+
+model Service {
+  id              String  @id
+  barbershopId    String
+  name            String
+  durationMinutes Int
+  basePrice       Float
+  description     String?
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
+  appointments Appointment[]
+}
+
+model BarberMembership {
+  id           String  @id
+  barberUserId String
+  barbershopId String
+  isExclusive  Boolean @default(false)
+  allowedShift String? // morning | afternoon | evening
+
+  barber     User       @relation(fields: [barberUserId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([barberUserId, barbershopId])
+}
+
+model BarberAvailability {
+  id           String @id
+  barberUserId String
+  barbershopId String
+  weekday      Int    // 0 = Sunday … 6 = Saturday
+  startTime    String // HH:MM
+  endTime      String // HH:MM
+
+  barber     User       @relation(fields: [barberUserId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+}
+
+model Appointment {
+  id              String   @id
+  barbershopId    String
+  barberUserId    String
+  clientUserId    String
+  serviceId       String
+  scheduledAt     DateTime
+  durationMinutes Int
+  priceSnapshot   Float
+  status          String   @default("pending")
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+  barber     User       @relation("AppointmentBarber", fields: [barberUserId], references: [id])
+  client     User       @relation("AppointmentClient", fields: [clientUserId], references: [id])
+  service    Service    @relation(fields: [serviceId], references: [id])
+}
