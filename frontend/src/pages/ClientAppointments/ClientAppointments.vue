@@ -7,6 +7,13 @@
       </p>
     </div>
 
+    <v-row v-if="loading">
+      <v-col cols="12" class="d-flex justify-center pa-10">
+        <v-progress-circular indeterminate color="primary" />
+      </v-col>
+    </v-row>
+
+    <template v-else>
     <!-- Próximos -->
     <p class="section-label mb-3">Próximos</p>
 
@@ -120,60 +127,108 @@
         </v-card-text>
       </v-card>
     </template>
+    </template>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { listAppointments, type Appointment, type AppointmentStatus } from '../../services/scheduling'
+import { getBarbershop, listServices } from '../../services/barberShop'
 
 interface ClientAppointment {
-  id: number
+  id: string
   barbershopName: string
   service: string
   date: string
   time: string
   price: number
-  status: 'confirmed' | 'pending' | 'cancelled' | 'done'
+  status: AppointmentStatus
 }
 
-// TODO: buscar do back — GET /appointments/me
-const appointments: ClientAppointment[] = [
-  { id: 1, barbershopName: 'Barbearia do João', service: 'Corte', date: '2026-07-02', time: '09:30', price: 45, status: 'confirmed' },
-  { id: 2, barbershopName: 'Black Label Barber', service: 'Corte + Barba', date: '2026-07-10', time: '14:00', price: 65, status: 'pending' },
-  { id: 3, barbershopName: 'Barbearia do João', service: 'Barba', date: '2026-06-15', time: '10:00', price: 35, status: 'done' },
-  { id: 4, barbershopName: 'Corte & Estilo Premium', service: 'Corte', date: '2026-06-01', time: '11:00', price: 50, status: 'cancelled' },
-]
+const loading = ref(true)
+const appointments = ref<ClientAppointment[]>([])
 
-const today = new Date().toISOString().split('T')[0]
+async function enrich(raw: Appointment[]): Promise<ClientAppointment[]> {
+  const barbershopIds = [...new Set(raw.map((a) => a.barbershopId))]
+
+  const shopEntries = await Promise.all(
+    barbershopIds.map(async (id) => {
+      const [shop, services] = await Promise.all([getBarbershop(id), listServices(id)])
+      const serviceNames = new Map(services.map((s) => [s.id, s.name]))
+      return [id, { name: shop.name, serviceNames }] as const
+    }),
+  )
+  const shopsById = new Map(shopEntries)
+
+  return raw.map((a) => {
+    const shop = shopsById.get(a.barbershopId)
+    const scheduledAt = new Date(a.scheduledAt)
+    return {
+      id: a.id,
+      barbershopName: shop?.name ?? 'Barbearia',
+      service: shop?.serviceNames.get(a.serviceId) ?? 'Serviço',
+      date: `${scheduledAt.getFullYear()}-${String(scheduledAt.getMonth() + 1).padStart(2, '0')}-${String(scheduledAt.getDate()).padStart(2, '0')}`,
+      time: `${String(scheduledAt.getHours()).padStart(2, '0')}:${String(scheduledAt.getMinutes()).padStart(2, '0')}`,
+      price: a.priceSnapshot,
+      status: a.status,
+    }
+  })
+}
+
+onMounted(async () => {
+  try {
+    const raw = await listAppointments()
+    appointments.value = await enrich(raw)
+  } finally {
+    loading.value = false
+  }
+})
+
+const today = new Date().toISOString().split('T')[0] ?? ''
 
 const upcomingAppointments = computed(() =>
-  appointments
-    .filter(a => a.date >= today && a.status !== 'cancelled')
+  appointments.value
+    .filter(a => a.date >= today && a.status !== 'cancelled' && a.status !== 'completed' && a.status !== 'no_show')
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 )
 
 const pastAppointments = computed(() =>
-  appointments
-    .filter(a => a.date < today || a.status === 'cancelled')
+  appointments.value
+    .filter(a => !upcomingAppointments.value.includes(a))
     .sort((a, b) => b.date.localeCompare(a.date))
 )
 
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
+  return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).toLocaleDateString('pt-BR', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
 }
 
-function statusColor(status: ClientAppointment['status']) {
-  const map = { confirmed: 'success', pending: 'warning', cancelled: 'error', done: 'default' } as const
+function statusColor(status: AppointmentStatus) {
+  const map = {
+    pending: 'warning',
+    confirmed: 'success',
+    in_progress: 'primary',
+    completed: 'default',
+    cancelled: 'error',
+    no_show: 'warning',
+  } as const
   return map[status]
 }
 
-function statusLabel(status: ClientAppointment['status']) {
-  const map = { confirmed: 'Confirmado', pending: 'Pendente', cancelled: 'Cancelado', done: 'Concluído' } as const
+function statusLabel(status: AppointmentStatus) {
+  const map = {
+    pending: 'Pendente',
+    confirmed: 'Confirmado',
+    in_progress: 'Em andamento',
+    completed: 'Concluído',
+    cancelled: 'Cancelado',
+    no_show: 'Não compareceu',
+  } as const
   return map[status]
 }
 </script>

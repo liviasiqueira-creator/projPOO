@@ -15,16 +15,34 @@
       <p class="text-body-2 text-medium-emphasis mt-1">{{ barbershopName }}</p>
     </div>
 
+    <v-alert
+      v-if="errorMessage"
+      type="error"
+      variant="tonal"
+      rounded="lg"
+      density="comfortable"
+      class="mb-4"
+      closable
+      @click:close="errorMessage = null"
+    >
+      {{ errorMessage }}
+    </v-alert>
+
     <v-row>
       <v-col cols="12" lg="8">
 
         <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
           1. Serviço
         </p>
-        <v-row class="mb-2">
+        <v-row v-if="loadingServices" class="mb-2">
+          <v-col cols="12" class="d-flex justify-center pa-4">
+            <v-progress-circular indeterminate color="primary" size="28" />
+          </v-col>
+        </v-row>
+        <v-row v-else class="mb-2">
           <v-col
             v-for="service in services"
-            :key="service.name"
+            :key="service.id"
             cols="12"
             sm="6"
           >
@@ -33,15 +51,15 @@
               elevation="0"
               border
               class="service-option"
-              :class="{ 'service-option--selected': selectedService?.name === service.name && !selectedPromo }"
+              :class="{ 'service-option--selected': selectedService?.id === service.id }"
               @click="selectService(service)"
             >
               <v-card-text class="d-flex align-center justify-space-between pa-4">
                 <div>
                   <p class="text-body-2 font-weight-medium">{{ service.name }}</p>
-                  <p class="text-caption text-medium-emphasis">{{ service.duration }}</p>
+                  <p class="text-caption text-medium-emphasis">{{ service.durationMinutes }} min</p>
                 </div>
-                <span class="service-price">R$ {{ service.price }}</span>
+                <span class="service-price">R$ {{ service.basePrice }}</span>
               </v-card-text>
             </v-card>
           </v-col>
@@ -103,19 +121,33 @@
         <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
           4. Horário
         </p>
-        <div class="time-slots mb-8">
+
+        <div v-if="selectedPromo" class="mb-8">
+          <p class="text-body-2 text-medium-emphasis">
+            Agendamento com promoção ainda não está disponível — selecione um serviço para ver horários.
+          </p>
+        </div>
+        <div v-else-if="!selectedService" class="mb-8">
+          <p class="text-body-2 text-medium-emphasis">Selecione um serviço para ver os horários disponíveis.</p>
+        </div>
+        <div v-else-if="loadingSlots" class="mb-8 d-flex pa-4">
+          <v-progress-circular indeterminate color="primary" size="28" />
+        </div>
+        <div v-else-if="timeSlots.length === 0" class="mb-8">
+          <p class="text-body-2 text-medium-emphasis">Nenhum horário disponível nesta data.</p>
+        </div>
+        <div v-else class="time-slots mb-8">
           <v-chip
             v-for="slot in timeSlots"
-            :key="slot.time"
-            :disabled="!slot.available"
-            :color="selectedTime === slot.time ? 'primary' : undefined"
-            :variant="selectedTime === slot.time ? 'flat' : 'outlined'"
+            :key="slot.startTime"
+            :color="selectedTime === slot.startTime ? 'primary' : undefined"
+            :variant="selectedTime === slot.startTime ? 'flat' : 'outlined'"
             size="large"
             rounded="lg"
             class="time-chip"
-            @click="slot.available && (selectedTime = slot.time)"
+            @click="selectedTime = slot.startTime"
           >
-            {{ slot.time }}
+            {{ slot.startTime }}
           </v-chip>
         </div>
 
@@ -124,8 +156,7 @@
           <div class="d-flex flex-column" style="gap: 8px;">
             <div class="d-flex align-center" style="gap: 10px;">
               <v-icon icon="mdi-scissors-cutting" size="16" color="primary" />
-              <span class="text-body-2">{{ activeSelection?.name }} · {{ activeSelection?.duration }}</span>
-              <v-chip v-if="selectedPromo" color="primary" size="x-small" variant="tonal">Promo</v-chip>
+              <span class="text-body-2">{{ activeSelectionDisplay?.name }} · {{ activeSelectionDisplay?.durationLabel }}</span>
             </div>
             <div class="d-flex align-center" style="gap: 10px;">
               <v-icon icon="mdi-calendar-outline" size="16" color="primary" />
@@ -138,14 +169,9 @@
             <v-divider class="my-1" />
             <div class="d-flex align-center justify-space-between">
               <span class="text-body-2 text-medium-emphasis">Total</span>
-              <div class="d-flex align-center" style="gap: 8px;">
-                <span v-if="selectedPromo" class="text-caption text-medium-emphasis text-decoration-line-through">
-                  R$ {{ selectedPromo.originalPrice }}
-                </span>
-                <span class="text-body-1 font-weight-medium" style="color: rgb(var(--v-theme-primary))">
-                  R$ {{ activeSelection?.price }}
-                </span>
-              </div>
+              <span class="text-body-1 font-weight-medium" style="color: rgb(var(--v-theme-primary))">
+                R$ {{ activeSelectionDisplay?.price }}
+              </span>
             </div>
           </div>
         </v-card>
@@ -167,7 +193,7 @@
       </v-col>
     </v-row>
 
-    <v-snackbar v-model="success" :color="successIsReward ? 'secondary' : 'success'" rounded="lg" :timeout="4000">
+    <v-snackbar v-model="success" color="success" rounded="lg" :timeout="4000">
       {{ successMessage }}
       <template #actions>
         <v-btn variant="text" @click="success = false">Fechar</v-btn>
@@ -177,21 +203,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
+import { getBarbershop, listServices, type Service } from '../../services/barberShop'
+import { getAvailableSlots, bookAppointment, type AvailableSlot } from '../../services/scheduling'
 
 const route = useRoute()
 const router = useRouter()
 
-const barbershopId = computed(() => route.params.id)
-const barbershopName = 'Barbearia do João'
+const barbershopId = computed(() => String(route.params.id ?? ''))
+const barbershopName = ref('')
 
-interface Service {
-  name: string
-  duration: string
-  price: number
-}
-
+// Promoções ainda não têm suporte no back (não existe entidade/endpoint de promoção)
 interface Promo {
   name: string
   duration: string
@@ -200,39 +224,16 @@ interface Promo {
   discount: number
 }
 
-const services: Service[] = [
-  { name: 'Corte', duration: '30 min', price: 45 },
-  { name: 'Barba', duration: '20 min', price: 35 },
-  { name: 'Sobrancelha', duration: '15 min', price: 20 },
-]
-
 const promos: Promo[] = [
   { name: 'Corte + Barba', duration: '45 min', price: 65, originalPrice: 80, discount: 19 },
   { name: 'Corte + Sobrancelha', duration: '40 min', price: 55, originalPrice: 65, discount: 15 },
 ]
 
-interface TimeSlot {
-  time: string
-  available: boolean
-}
-
-// TODO: buscar do back — GET /barbershop/:id/availability?date=YYYY-MM-DD&serviceId=...
-// O back calcula os slots com base no horário de funcionamento, duração do serviço e agendamentos existentes
-const timeSlots = ref<TimeSlot[]>([
-  { time: '09:00', available: true },
-  { time: '09:30', available: false },
-  { time: '10:00', available: true },
-  { time: '10:30', available: true },
-  { time: '11:00', available: false },
-  { time: '11:30', available: true },
-  { time: '14:00', available: true },
-  { time: '14:30', available: true },
-  { time: '15:00', available: false },
-  { time: '15:30', available: true },
-  { time: '16:00', available: true },
-  { time: '16:30', available: true },
-  { time: '17:00', available: true },
-])
+const services = ref<Service[]>([])
+const loadingServices = ref(true)
+const availableSlots = ref<AvailableSlot[]>([])
+const loadingSlots = ref(false)
+const errorMessage = ref<string | null>(null)
 
 const selectedService = ref<Service | null>(null)
 const selectedPromo = ref<Promo | null>(null)
@@ -241,9 +242,23 @@ const selectedTime = ref<string | null>(null)
 const loading = ref(false)
 const success = ref(false)
 const successMessage = ref('Agendamento confirmado!')
-const successIsReward = ref(false)
 
 const minDate = new Date().toISOString().split('T')[0]
+
+onMounted(async () => {
+  try {
+    const [shop, shopServices] = await Promise.all([
+      getBarbershop(barbershopId.value),
+      listServices(barbershopId.value),
+    ])
+    barbershopName.value = shop.name
+    services.value = shopServices
+  } catch {
+    errorMessage.value = 'Não foi possível carregar os dados da barbearia.'
+  } finally {
+    loadingServices.value = false
+  }
+})
 
 function selectService(service: Service) {
   selectedService.value = service
@@ -255,12 +270,52 @@ function selectPromo(promo: Promo) {
   selectedService.value = null
 }
 
-const activeSelection = computed(() => selectedPromo.value ?? selectedService.value)
+const activeSelectionDisplay = computed(() => {
+  if (selectedPromo.value) {
+    return { name: selectedPromo.value.name, durationLabel: selectedPromo.value.duration, price: selectedPromo.value.price }
+  }
+  if (selectedService.value) {
+    return {
+      name: selectedService.value.name,
+      durationLabel: `${selectedService.value.durationMinutes} min`,
+      price: selectedService.value.basePrice,
+    }
+  }
+  return null
+})
 
-// Quando a data ou o serviço mudar, limpa o horário selecionado
-// TODO: disparar chamada ao back aqui — GET /barbershop/:id/availability?date=...&serviceId=...
-watch([selectedDate, activeSelection], () => {
+function toISODate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+// Horários dependem de um serviço real (têm duração cadastrada) — promoções não têm slot próprio
+watch([selectedDate, selectedService], async () => {
   selectedTime.value = null
+  availableSlots.value = []
+  if (!selectedService.value) return
+
+  loadingSlots.value = true
+  try {
+    availableSlots.value = await getAvailableSlots(barbershopId.value, selectedService.value.id, toISODate(selectedDate.value))
+  } catch {
+    availableSlots.value = []
+  } finally {
+    loadingSlots.value = false
+  }
+})
+
+const timeSlots = computed(() => {
+  const seen = new Set<string>()
+  return availableSlots.value
+    .filter((slot) => (seen.has(slot.startTime) ? false : (seen.add(slot.startTime), true)))
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+})
+
+const selectedSlotBarberUserId = computed(() => {
+  return availableSlots.value.find((slot) => slot.startTime === selectedTime.value)?.barberUserId ?? null
 })
 
 const selectedDateLabel = computed(() => {
@@ -273,25 +328,31 @@ const selectedDateLabel = computed(() => {
 })
 
 const isReady = computed(() =>
-  activeSelection.value !== null && selectedDate.value !== null && selectedTime.value !== null
+  selectedService.value !== null && selectedTime.value !== null && selectedSlotBarberUserId.value !== null
 )
 
 async function confirm() {
+  if (!selectedService.value || !selectedTime.value || !selectedSlotBarberUserId.value) return
+
   loading.value = true
-  // TODO: substituir por chamada real — POST /scheduling
-  // const res = await api.post('/scheduling', { ... })
-  // const rewardEarned = res.data.rewardEarned
-  // const rewardName = res.data.reward
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  const rewardEarned = false // remover quando integrar o back
-  const rewardName = ''     // remover quando integrar o back
-  loading.value = false
-  successIsReward.value = rewardEarned
-  successMessage.value = rewardEarned
-    ? `Agendamento confirmado! Este ${rewardName} foi de cortesia.`
-    : 'Agendamento confirmado!'
-  success.value = true
-  setTimeout(() => router.push('/appointments'), 4000)
+  errorMessage.value = null
+  try {
+    await bookAppointment({
+      barbershopId: barbershopId.value,
+      barberUserId: selectedSlotBarberUserId.value,
+      serviceId: selectedService.value.id,
+      scheduledAt: `${toISODate(selectedDate.value)}T${selectedTime.value}:00`,
+    })
+    successMessage.value = 'Agendamento confirmado!'
+    success.value = true
+    setTimeout(() => router.push('/appointments'), 3000)
+  } catch (err) {
+    errorMessage.value = axios.isAxiosError(err)
+      ? (err.response?.data?.error ?? 'Não foi possível confirmar o agendamento.')
+      : 'Não foi possível confirmar o agendamento.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

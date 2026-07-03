@@ -24,3 +24,15 @@ export async function createUser(payload: RegisterPayload) {
   const { data } = await api.post('/auth/register', payload)
   return data;
 }
+
+export interface Me {
+  id: string
+  name: string
+  email: string
+  role: 'client' | 'barber' | 'admin'
+}
+
+export async function getMe(): Promise<Me> {
+  const { data } = await api.get<Me>('/auth/me')
+  return data
+}
