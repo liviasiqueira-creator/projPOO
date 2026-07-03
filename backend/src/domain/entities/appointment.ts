@@ -27,6 +27,23 @@ export class Appointment {
     return new Date(this.scheduledAt.getTime() + this.durationMinutes * 60 * 1000)
   }
 
+  static restore(props: {
+    id: string
+    barbershopId: string
+    barberUserId: string
+    clientUserId: string
+    serviceId: string
+    scheduledAt: Date
+    durationMinutes: number
+    priceSnapshot: number
+    status: AppointmentStatus
+  }): Appointment {
+    return new Appointment(
+      props.id, props.barbershopId, props.barberUserId, props.clientUserId, props.serviceId,
+      props.scheduledAt, props.durationMinutes, props.priceSnapshot, props.status, new Date(),
+    )
+  }
+
   static create(props: {
     id: string
     barbershopId: string
