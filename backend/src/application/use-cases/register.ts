@@ -26,7 +26,7 @@ export class RegisterUseCase {
 
   async execute(input: RegisterInput): Promise<RegisterOutput> {
     const existing = await this.userRepository.findByEmail(input.email)
-    if (existing) throw new Error('Email already in use.')
+    if (existing) throw new Error('E-mail já está em uso.')
 
     const passwordHash = await this.hasher.hash(input.password)
 
