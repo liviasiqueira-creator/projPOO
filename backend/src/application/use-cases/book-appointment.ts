@@ -3,6 +3,8 @@ import { Appointment } from '../../domain/entities/appointment'
 import type { AppointmentRepository } from '../../domain/repositories/appointment-repository'
 import type { ServiceRepository } from '../../domain/repositories/service-repository'
 import type { BarberMembershipRepository } from '../../domain/repositories/barber-membership-repository'
+import type { LoyaltyRewardRepository } from '../../domain/repositories/loyalty-reward-repository'
+import { LOYALTY_RULES } from '../../domain/value-objects/loyalty-rule'
 
 export type BookAppointmentInput = {
   barbershopId: string
@@ -10,6 +12,7 @@ export type BookAppointmentInput = {
   clientUserId: string
   serviceId: string
   scheduledAt: Date
+  redeemRewardId?: string
 }
 
 export type BookAppointmentOutput = {
@@ -23,6 +26,7 @@ export type BookAppointmentOutput = {
   durationMinutes: number
   priceSnapshot: number
   status: string
+  isRedemption: boolean
 }
 
 export class BookAppointmentUseCase {
@@ -30,6 +34,7 @@ export class BookAppointmentUseCase {
     private readonly appointmentRepository: AppointmentRepository,
     private readonly serviceRepository: ServiceRepository,
     private readonly membershipRepository: BarberMembershipRepository,
+    private readonly loyaltyRewardRepository: LoyaltyRewardRepository,
   ) {}
 
   async execute(input: BookAppointmentInput): Promise<BookAppointmentOutput> {
@@ -53,6 +58,21 @@ export class BookAppointmentUseCase {
     )
     if (conflicts.length > 0) throw new Error('Barber already has an appointment during this time.')
 
+    let priceSnapshot = service.basePrice
+    let reward = null
+
+    if (input.redeemRewardId) {
+      reward = await this.loyaltyRewardRepository.findById(input.redeemRewardId)
+      if (!reward || reward.clientUserId !== input.clientUserId || reward.barbershopId !== input.barbershopId) {
+        throw new Error('Reward not found.')
+      }
+      if (!reward.isRedeemableAt(new Date())) throw new Error('Reward is not redeemable (already used or expired).')
+      if (service.name !== LOYALTY_RULES[reward.type].rewardServiceName) {
+        throw new Error(`This reward can only be redeemed for the ${LOYALTY_RULES[reward.type].rewardServiceName} service.`)
+      }
+      priceSnapshot = 0
+    }
+
     const appointment = Appointment.create({
       id: randomUUID(),
       barbershopId: input.barbershopId,
@@ -61,10 +81,15 @@ export class BookAppointmentUseCase {
       serviceId: input.serviceId,
       scheduledAt: input.scheduledAt,
       durationMinutes: service.durationMinutes,
-      priceSnapshot: service.basePrice,
+      priceSnapshot,
+      isRedemption: reward !== null,
     })
 
     await this.appointmentRepository.save(appointment)
+
+    if (reward) {
+      await this.loyaltyRewardRepository.update(reward.redeem(appointment.id))
+    }
 
     return {
       id: appointment.id,
@@ -77,6 +102,7 @@ export class BookAppointmentUseCase {
       durationMinutes: appointment.durationMinutes,
       priceSnapshot: appointment.priceSnapshot,
       status: appointment.status,
+      isRedemption: appointment.isRedemption,
     }
   }
 }

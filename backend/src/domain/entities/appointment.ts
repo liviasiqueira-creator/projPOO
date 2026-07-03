@@ -21,6 +21,7 @@ export class Appointment {
     readonly priceSnapshot: number,
     readonly status: AppointmentStatus,
     readonly createdAt: Date,
+    readonly isRedemption: boolean,
   ) {}
 
   get endsAt(): Date {
@@ -37,10 +38,12 @@ export class Appointment {
     durationMinutes: number
     priceSnapshot: number
     status: AppointmentStatus
+    isRedemption: boolean
   }): Appointment {
     return new Appointment(
       props.id, props.barbershopId, props.barberUserId, props.clientUserId, props.serviceId,
       props.scheduledAt, props.durationMinutes, props.priceSnapshot, props.status, new Date(),
+      props.isRedemption,
     )
   }
 
@@ -53,6 +56,7 @@ export class Appointment {
     scheduledAt: Date
     durationMinutes: number
     priceSnapshot: number
+    isRedemption?: boolean
   }): Appointment {
     if (props.scheduledAt <= new Date()) throw new Error('Appointment must be scheduled in the future.')
     if (props.durationMinutes <= 0) throw new Error('Duration must be greater than zero.')
@@ -69,6 +73,7 @@ export class Appointment {
       props.priceSnapshot,
       'pending',
       new Date(),
+      props.isRedemption ?? false,
     )
   }
 
@@ -81,6 +86,7 @@ export class Appointment {
     return new Appointment(
       this.id, this.barbershopId, this.barberUserId, this.clientUserId, this.serviceId,
       this.scheduledAt, this.durationMinutes, this.priceSnapshot, to, this.createdAt,
+      this.isRedemption,
     )
   }
 }

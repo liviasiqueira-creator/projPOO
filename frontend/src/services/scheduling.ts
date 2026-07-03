@@ -20,6 +20,7 @@ export interface BookAppointmentPayload {
   barberUserId: string
   serviceId: string
   scheduledAt: string
+  redeemRewardId?: string
 }
 
 export interface Appointment {
@@ -33,6 +34,7 @@ export interface Appointment {
   durationMinutes: number
   priceSnapshot: number
   status: AppointmentStatus
+  isRedemption: boolean
 }
 
 export async function bookAppointment(payload: BookAppointmentPayload): Promise<Appointment> {

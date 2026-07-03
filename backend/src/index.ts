@@ -9,6 +9,10 @@ import { PrismaServiceRepository } from './infrastructure/prisma-service-reposit
 import { PrismaBarberMembershipRepository } from './infrastructure/prisma-barber-membership-repository'
 import { PrismaBarberAvailabilityRepository } from './infrastructure/prisma-barber-availability-repository'
 import { PrismaAppointmentRepository } from './infrastructure/prisma-appointment-repository'
+import { PrismaLoyaltyProgressRepository } from './infrastructure/prisma-loyalty-progress-repository'
+import { PrismaLoyaltyRewardRepository } from './infrastructure/prisma-loyalty-reward-repository'
+import { PrismaBarbershopPromotionRepository } from './infrastructure/prisma-barbershop-promotion-repository'
+import { DefaultLoyaltyEngine } from './application/services/loyalty-engine'
 import { buildServer } from './http/server'
 
 async function main() {
@@ -23,12 +27,17 @@ async function main() {
   const membershipRepository = new PrismaBarberMembershipRepository(db)
   const availabilityRepository = new PrismaBarberAvailabilityRepository(db)
   const appointmentRepository = new PrismaAppointmentRepository(db)
+  const loyaltyProgressRepository = new PrismaLoyaltyProgressRepository(db)
+  const loyaltyRewardRepository = new PrismaLoyaltyRewardRepository(db)
+  const barbershopPromotionRepository = new PrismaBarbershopPromotionRepository(db)
+  const loyaltyEngine = new DefaultLoyaltyEngine(loyaltyProgressRepository, loyaltyRewardRepository, barbershopPromotionRepository)
 
   const port = Number(process.env['PORT'] ?? 3000)
   const server = await buildServer({
     userRepository, barbershopRepository, serviceRepository,
     membershipRepository, availabilityRepository, appointmentRepository,
-    hasher, signer,
+    loyaltyProgressRepository, loyaltyRewardRepository, barbershopPromotionRepository,
+    hasher, signer, loyaltyEngine,
   })
 
   await server.listen({ port, host: '0.0.0.0' })

@@ -16,10 +16,12 @@ model User {
   phone        String?
   avatarUrl    String?
 
-  memberships  BarberMembership[]
-  availability BarberAvailability[]
-  asBarber     Appointment[]        @relation("AppointmentBarber")
-  asClient     Appointment[]        @relation("AppointmentClient")
+  memberships     BarberMembership[]
+  availability    BarberAvailability[]
+  asBarber        Appointment[]        @relation("AppointmentBarber")
+  asClient        Appointment[]        @relation("AppointmentClient")
+  loyaltyProgress LoyaltyProgress[]
+  loyaltyRewards  LoyaltyReward[]
 }
 
 model Barbershop {
@@ -34,10 +36,13 @@ model Barbershop {
   longitude    Float?
   ownerUserId  String?
 
-  services     Service[]
-  memberships  BarberMembership[]
-  availability BarberAvailability[]
-  appointments Appointment[]
+  services        Service[]
+  memberships     BarberMembership[]
+  availability    BarberAvailability[]
+  appointments    Appointment[]
+  promotions      BarbershopPromotion[]
+  loyaltyProgress LoyaltyProgress[]
+  loyaltyRewards  LoyaltyReward[]
 }
 
 model Service {
@@ -47,9 +52,12 @@ model Service {
   durationMinutes Int
   basePrice       Float
   description     String?
+  isActive        Boolean @default(true)
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
   appointments Appointment[]
+
+  @@unique([barbershopId, name])
 }
 
 model BarberMembership {
@@ -87,9 +95,55 @@ model Appointment {
   durationMinutes Int
   priceSnapshot   Float
   status          String   @default("pending")
+  isRedemption    Boolean  @default(false)
+
+  barbershop        Barbershop      @relation(fields: [barbershopId], references: [id])
+  barber            User            @relation("AppointmentBarber", fields: [barberUserId], references: [id])
+  client            User            @relation("AppointmentClient", fields: [clientUserId], references: [id])
+  service           Service         @relation(fields: [serviceId], references: [id])
+  redeemedByRewards LoyaltyReward[]
+}
+
+model BarbershopPromotion {
+  id           String    @id
+  barbershopId String
+  type         String    // barba_gratis | corte_gratis
+  active       Boolean   @default(false)
+  activatedAt  DateTime?
+  createdAt    DateTime  @default(now())
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id])
-  barber     User       @relation("AppointmentBarber", fields: [barberUserId], references: [id])
-  client     User       @relation("AppointmentClient", fields: [clientUserId], references: [id])
-  service    Service    @relation(fields: [serviceId], references: [id])
+
+  @@unique([barbershopId, type])
+}
+
+model LoyaltyProgress {
+  id             String    @id
+  clientUserId   String
+  barbershopId   String
+  type           String    // barba_gratis | corte_gratis
+  count          Int       @default(0)
+  cycleStartedAt DateTime?
+  updatedAt      DateTime  @default(now())
+
+  client     User       @relation(fields: [clientUserId], references: [id])
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([clientUserId, barbershopId, type])
+}
+
+model LoyaltyReward {
+  id                    String    @id
+  clientUserId          String
+  barbershopId          String
+  type                  String    // barba_gratis | corte_gratis
+  earnedAt              DateTime
+  expiresAt             DateTime
+  redeemed              Boolean   @default(false)
+  redeemedAt            DateTime?
+  redeemedAppointmentId String?
+
+  client      User        @relation(fields: [clientUserId], references: [id])
+  barbershop  Barbershop  @relation(fields: [barbershopId], references: [id])
+  appointment Appointment? @relation(fields: [redeemedAppointmentId], references: [id])
 }

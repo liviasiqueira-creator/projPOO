@@ -202,9 +202,9 @@ const dayOptions = [
 ]
 
 const serviceOptions = [
-  { label: 'Corte', value: 'haircut' },
-  { label: 'Barba', value: 'beard' },
-  { label: 'Sobrancelha', value: 'eyebrow' },
+  { label: 'Corte', value: 'Corte' },
+  { label: 'Barba', value: 'Barba' },
+  { label: 'Sobrancelha', value: 'Sobrancelha' },
 ]
 
 const form = reactive({
@@ -239,8 +239,7 @@ const handleSubmit = async () => {
   errorMessage.value = null
 
   try {
-    // Horário de funcionamento e serviços ainda não têm suporte no back
-    // (POST /barbershops só aceita name, address, city, phone, logoUrl)
+    // Horário de funcionamento ainda não tem suporte no back
     await createBarbershop({
       name: form.name,
       phone: form.phone,
@@ -249,6 +248,7 @@ const handleSubmit = async () => {
         .join(', '),
       city: form.address.city,
       ...(form.logoUrl.trim() && { logoUrl: form.logoUrl.trim() }),
+      serviceNames: form.services,
     })
     // Criar a barbearia promove o usuário para "barber" no back — recarrega a página inteira
     // pra sidebar (montada uma única vez no Layout) buscar o novo role via /auth/me.

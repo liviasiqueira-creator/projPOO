@@ -11,8 +11,13 @@ export class PrismaServiceRepository implements ServiceRepository {
   }
 
   async findByBarbershopId(barbershopId: string): Promise<Service[]> {
-    const rows = await this.db.service.findMany({ where: { barbershopId } })
+    const rows = await this.db.service.findMany({ where: { barbershopId, isActive: true } })
     return rows.map((r) => this.toEntity(r))
+  }
+
+  async findByBarbershopIdAndName(barbershopId: string, name: string): Promise<Service | null> {
+    const row = await this.db.service.findUnique({ where: { barbershopId_name: { barbershopId, name } } })
+    return row ? this.toEntity(row) : null
   }
 
   async save(service: Service): Promise<void> {
@@ -25,26 +30,29 @@ export class PrismaServiceRepository implements ServiceRepository {
         durationMinutes: service.durationMinutes,
         basePrice: service.basePrice,
         description: service.description ?? null,
+        isActive: service.isActive,
       },
       update: {
         name: service.name,
         durationMinutes: service.durationMinutes,
         basePrice: service.basePrice,
         description: service.description ?? null,
+        isActive: service.isActive,
       },
     })
   }
 
   private toEntity(row: {
     id: string; barbershopId: string; name: string
-    durationMinutes: number; basePrice: number; description: string | null
+    durationMinutes: number; basePrice: number; description: string | null; isActive: boolean
   }): Service {
-    return Service.create({
+    return Service.restore({
       id: row.id,
       barbershopId: row.barbershopId,
       name: row.name,
       durationMinutes: row.durationMinutes,
       basePrice: row.basePrice,
+      isActive: row.isActive,
       ...(row.description && { description: row.description }),
     })
   }

@@ -31,6 +31,39 @@
     <v-row>
       <v-col cols="12" lg="8">
 
+        <template v-if="eligibleRewards.length > 0">
+          <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
+            Recompensas disponíveis
+          </p>
+          <v-row class="mb-2">
+            <v-col
+              v-for="reward in eligibleRewards"
+              :key="reward.id"
+              cols="12"
+              sm="6"
+            >
+              <v-card
+                rounded="lg"
+                elevation="0"
+                border
+                class="service-option reward-option"
+                :class="{ 'service-option--selected': selectedReward?.id === reward.id }"
+                @click="selectReward(reward)"
+              >
+                <v-card-text class="d-flex align-center justify-space-between pa-4">
+                  <div>
+                    <p class="text-body-2 font-weight-medium">{{ REWARD_SERVICE_NAME[reward.type] }} grátis</p>
+                    <p class="text-caption text-medium-emphasis">
+                      Válida até {{ new Date(reward.expiresAt).toLocaleDateString('pt-BR') }}
+                    </p>
+                  </div>
+                  <v-chip color="success" size="x-small" variant="tonal">Grátis</v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </template>
+
         <p class="text-body-2 font-weight-medium text-uppercase tracking-wide mb-3 section-label">
           1. Serviço
         </p>
@@ -208,6 +241,12 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { getBarbershop, listServices, type Service } from '../../services/barberShop'
 import { getAvailableSlots, bookAppointment, type AvailableSlot } from '../../services/scheduling'
+import { getMyRewards, type LoyaltyReward, type LoyaltyPromotionType } from '../../services/loyalty'
+
+const REWARD_SERVICE_NAME: Record<LoyaltyPromotionType, 'Barba' | 'Corte'> = {
+  barba_gratis: 'Barba',
+  corte_gratis: 'Corte',
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -237,6 +276,8 @@ const errorMessage = ref<string | null>(null)
 
 const selectedService = ref<Service | null>(null)
 const selectedPromo = ref<Promo | null>(null)
+const myRewards = ref<LoyaltyReward[]>([])
+const selectedReward = ref<LoyaltyReward | null>(null)
 const selectedDate = ref<Date>(new Date())
 const selectedTime = ref<string | null>(null)
 const loading = ref(false)
@@ -258,19 +299,46 @@ onMounted(async () => {
   } finally {
     loadingServices.value = false
   }
+
+  try {
+    myRewards.value = await getMyRewards(barbershopId.value)
+  } catch {
+    myRewards.value = []
+  }
 })
+
+const eligibleRewards = computed(() =>
+  myRewards.value.filter((r) => !r.redeemed && new Date(r.expiresAt) > new Date())
+)
 
 function selectService(service: Service) {
   selectedService.value = service
   selectedPromo.value = null
+  selectedReward.value = null
 }
 
 function selectPromo(promo: Promo) {
   selectedPromo.value = promo
   selectedService.value = null
+  selectedReward.value = null
+}
+
+function selectReward(reward: LoyaltyReward) {
+  const matchingService = services.value.find((s) => s.name === REWARD_SERVICE_NAME[reward.type])
+  if (!matchingService) return
+  selectedService.value = matchingService
+  selectedReward.value = reward
+  selectedPromo.value = null
 }
 
 const activeSelectionDisplay = computed(() => {
+  if (selectedReward.value && selectedService.value) {
+    return {
+      name: `${selectedService.value.name} (recompensa)`,
+      durationLabel: `${selectedService.value.durationMinutes} min`,
+      price: 0,
+    }
+  }
   if (selectedPromo.value) {
     return { name: selectedPromo.value.name, durationLabel: selectedPromo.value.duration, price: selectedPromo.value.price }
   }
@@ -342,6 +410,7 @@ async function confirm() {
       barberUserId: selectedSlotBarberUserId.value,
       serviceId: selectedService.value.id,
       scheduledAt: `${toISODate(selectedDate.value)}T${selectedTime.value}:00.000Z`,
+      ...(selectedReward.value && { redeemRewardId: selectedReward.value.id }),
     })
     successMessage.value = 'Agendamento confirmado!'
     success.value = true
