@@ -103,6 +103,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { isAxiosError } from 'axios'
 import { login, createUser } from '@/services/auth'
 
 defineOptions({ name: 'AuthForm' })
@@ -158,10 +159,11 @@ const handleSubmit = async () => {
       localStorage.setItem('accessToken', accessToken)
     }
     router.push('/home')
-  } catch {
-    errorMessage.value = props.mode === 'login'
+  } catch (err) {
+    const apiMessage = isAxiosError<{ error?: string }>(err) ? err.response?.data?.error : undefined
+    errorMessage.value = apiMessage ?? (props.mode === 'login'
       ? 'E-mail ou senha inválidos.'
-      : 'Erro ao criar conta. Tente novamente.'
+      : 'Erro ao criar conta. Tente novamente.')
   } finally {
     loading.value = false
   }

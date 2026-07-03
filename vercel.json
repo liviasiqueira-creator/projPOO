@@ -1,0 +1,6 @@
+{
+  "installCommand": "npm install",
+  "buildCommand": "npm run build-only --workspace frontend",
+  "outputDirectory": "frontend/dist",
+  "framework": "vue"
+}
