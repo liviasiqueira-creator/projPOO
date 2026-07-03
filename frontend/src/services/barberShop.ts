@@ -23,12 +23,15 @@ export async function listBarbershops(params?: ListBarbershopsParams): Promise<B
   return data
 }
 
+export const FIXED_SERVICE_NAMES = ['Corte', 'Barba', 'Sobrancelha'] as const
+
 export interface CreateBarbershopPayload {
   name: string
   address?: string
   city?: string
   phone?: string
   logoUrl?: string
+  serviceNames?: string[]
 }
 
 export interface CreateBarbershopResponse {
@@ -67,4 +70,22 @@ export interface Service {
 export async function listServices(barbershopId: string): Promise<Service[]> {
   const { data } = await api.get<Service[]>(`/barbershops/${barbershopId}/services`)
   return data
+}
+
+export async function enableService(barbershopId: string, name: string): Promise<Service> {
+  const { data } = await api.post<Service>(`/barbershops/${barbershopId}/services`, { name })
+  return data
+}
+
+export async function updateService(
+  barbershopId: string,
+  serviceId: string,
+  payload: { durationMinutes: number; basePrice: number },
+): Promise<Service> {
+  const { data } = await api.put<Service>(`/barbershops/${barbershopId}/services/${serviceId}`, payload)
+  return data
+}
+
+export async function removeService(barbershopId: string, serviceId: string): Promise<void> {
+  await api.delete(`/barbershops/${barbershopId}/services/${serviceId}`)
 }

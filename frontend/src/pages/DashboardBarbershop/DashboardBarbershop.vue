@@ -79,6 +79,7 @@
         size="small"
         prepend-icon="mdi-plus"
         class="text-none"
+        :disabled="missingServiceNames.length === 0"
         @click="openServiceDialog()"
       >
         Novo serviço
@@ -143,6 +144,7 @@
         prepend-icon="mdi-plus"
         class="text-none mt-4"
         size="small"
+        :disabled="missingServiceNames.length === 0"
         @click="openServiceDialog()"
       >
         Novo serviço
@@ -219,16 +221,20 @@
           </span>
         </v-card-title>
         <v-card-text class="pa-5 pt-2">
-          <v-text-field
+          <v-select
+            v-if="!editingService"
             v-model="serviceForm.name"
-            label="Nome do serviço"
-            placeholder="Ex: Corte"
+            label="Serviço"
+            :items="missingServiceNames"
             variant="outlined"
             rounded="lg"
             density="comfortable"
             class="mb-3"
             hide-details
           />
+          <p v-else class="text-body-2 text-medium-emphasis mb-3">
+            Serviço: <strong>{{ editingService.name }}</strong> (nome não pode ser alterado)
+          </p>
           <v-text-field
             v-model.number="serviceForm.durationMinutes"
             label="Duração (minutos)"
@@ -260,6 +266,7 @@
             rounded="lg"
             class="text-none flex-1-1"
             :disabled="!serviceFormValid"
+            :loading="savingService"
             @click="saveService"
           >
             Salvar
@@ -273,7 +280,16 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
-import { getMyBarbershop, listServices, type BarbershopDetail, type Service } from '../../services/barberShop'
+import {
+  getMyBarbershop,
+  listServices,
+  enableService,
+  updateService,
+  removeService as removeServiceApi,
+  FIXED_SERVICE_NAMES,
+  type BarbershopDetail,
+  type Service,
+} from '../../services/barberShop'
 
 const loading = ref(true)
 const notFound = ref(false)
@@ -327,10 +343,15 @@ function saveInfo() {
 }
 
 // --- Service dialog ---
-// Ainda não persiste no back (falta PUT/DELETE de serviço) — só reflete localmente.
+// Catálogo fixo: nome só pode ser um dos 3 serviços padrão, nunca é editável.
 const serviceDialog = ref(false)
 const editingService = ref<Service | null>(null)
+const savingService = ref(false)
 const serviceForm = reactive({ name: '', durationMinutes: 0, basePrice: 0 })
+
+const missingServiceNames = computed<string[]>(() =>
+  FIXED_SERVICE_NAMES.filter((name) => !services.value.some((s) => s.name === name))
+)
 
 const serviceFormValid = computed(() =>
   serviceForm.name.trim() && serviceForm.durationMinutes > 0 && serviceForm.basePrice > 0
@@ -340,25 +361,38 @@ function openServiceDialog(service?: Service) {
   editingService.value = service ?? null
   Object.assign(serviceForm, service
     ? { name: service.name, durationMinutes: service.durationMinutes, basePrice: service.basePrice }
-    : { name: '', durationMinutes: 0, basePrice: 0 }
+    : { name: missingServiceNames.value[0] ?? '', durationMinutes: 0, basePrice: 0 }
   )
   serviceDialog.value = true
 }
 
-function saveService() {
-  if (editingService.value) {
-    const idx = services.value.findIndex(s => s.id === editingService.value!.id)
-    if (idx !== -1) {
-      services.value[idx] = { ...editingService.value, ...serviceForm }
+async function saveService() {
+  if (!barbershop.value) return
+  savingService.value = true
+  try {
+    if (editingService.value) {
+      const updated = await updateService(barbershop.value.id, editingService.value.id, {
+        durationMinutes: serviceForm.durationMinutes,
+        basePrice: serviceForm.basePrice,
+      })
+      const idx = services.value.findIndex((s) => s.id === editingService.value!.id)
+      if (idx !== -1) services.value[idx] = updated
+    } else {
+      const created = await enableService(barbershop.value.id, serviceForm.name)
+      services.value.push(created)
     }
-  } else {
-    services.value.push({ id: crypto.randomUUID(), ...serviceForm })
+    serviceDialog.value = false
+  } catch {
+    // Mantém o dialog aberto para o usuário tentar novamente.
+  } finally {
+    savingService.value = false
   }
-  serviceDialog.value = false
 }
 
-function removeService(id: string) {
-  services.value = services.value.filter(s => s.id !== id)
+async function removeService(id: string) {
+  if (!barbershop.value) return
+  await removeServiceApi(barbershop.value.id, id)
+  services.value = services.value.filter((s) => s.id !== id)
 }
 </script>
 
