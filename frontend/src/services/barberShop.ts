@@ -51,6 +51,11 @@ export async function getBarbershop(barbershopId: string): Promise<BarbershopDet
   return data
 }
 
+export async function getMyBarbershop(): Promise<BarbershopDetail> {
+  const { data } = await api.get<BarbershopDetail>('/barbershops/me')
+  return data
+}
+
 export interface Service {
   id: string
   name: string

@@ -25,6 +25,13 @@ export class InMemoryBarbershopRepository implements BarbershopRepository {
     return null
   }
 
+  async findByOwnerUserId(ownerUserId: string): Promise<Barbershop | null> {
+    for (const barbershop of this.barbershops.values()) {
+      if (barbershop.ownerUserId === ownerUserId) return barbershop
+    }
+    return null
+  }
+
   async findAll(filters?: BarbershopFilters): Promise<Barbershop[]> {
     let results = [...this.barbershops.values()].filter((b) => b.isActive)
 

@@ -260,8 +260,10 @@ export async function buildServer(deps: ServerDeps) {
     if (!auth?.startsWith('Bearer ')) {
       return reply.status(401).send({ error: 'Missing token' })
     }
+    let ownerUserId: string
     try {
-      await deps.signer.verify(auth.slice(7))
+      const payload = await deps.signer.verify(auth.slice(7))
+      ownerUserId = String(payload['sub'])
     } catch {
       return reply.status(401).send({ error: 'Invalid token' })
     }
@@ -274,9 +276,9 @@ export async function buildServer(deps: ServerDeps) {
       logoUrl?: string
     }
 
-    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository)
+    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository, deps.userRepository)
     try {
-      const result = await useCase.execute(body)
+      const result = await useCase.execute({ ...body, ownerUserId })
       return reply.status(201).send(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create barbershop.'
@@ -406,6 +408,57 @@ export async function buildServer(deps: ServerDeps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create service.'
       return reply.status(404).send({ error: message })
+    }
+  })
+
+  server.get('/barbershops/me', {
+    schema: {
+      summary: 'Buscar a barbearia do usuário autenticado',
+      tags: ['Barbershops'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:        { type: 'string' },
+            name:      { type: 'string' },
+            slug:      { type: 'string' },
+            city:      { type: 'string' },
+            address:   { type: 'string' },
+            phone:     { type: 'string' },
+            logoUrl:   { type: 'string' },
+            latitude:  { type: 'number' },
+            longitude: { type: 'number' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    let ownerUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      ownerUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const barbershop = await deps.barbershopRepository.findByOwnerUserId(ownerUserId)
+    if (!barbershop) return reply.status(404).send({ error: 'Barbershop not found.' })
+
+    return {
+      id: barbershop.id,
+      name: barbershop.name,
+      slug: barbershop.slug.value,
+      city: barbershop.city,
+      address: barbershop.address,
+      phone: barbershop.phone?.value,
+      logoUrl: barbershop.logoUrl?.value,
+      latitude: barbershop.latitude,
+      longitude: barbershop.longitude,
     }
   })
 

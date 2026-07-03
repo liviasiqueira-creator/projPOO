@@ -16,6 +16,7 @@ const makeFakeServiceRepo = (): ServiceRepository => ({
 const makeFakeBarbershopRepo = (exists = true): BarbershopRepository => ({
   findById: async (id) => id === existingBarbershop.id ? existingBarbershop : null,
   findBySlug: async () => null,
+  findByOwnerUserId: async () => null,
   findAll: async () => [],
   save: async () => {},
 })

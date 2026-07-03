@@ -15,6 +15,7 @@ export class Barbershop {
     readonly logoUrl?: AvatarUrl,
     readonly latitude?: number,
     readonly longitude?: number,
+    readonly ownerUserId?: string,
   ) {}
 
   static create(props: {
@@ -26,6 +27,7 @@ export class Barbershop {
     logoUrl?: string
     latitude?: number
     longitude?: number
+    ownerUserId?: string
   }): Barbershop {
     if (!props.name.trim()) throw new Error('Barbershop name cannot be empty.')
 
@@ -48,6 +50,7 @@ export class Barbershop {
       props.logoUrl ? new AvatarUrl(props.logoUrl) : undefined,
       props.latitude,
       props.longitude,
+      props.ownerUserId,
     )
   }
 }

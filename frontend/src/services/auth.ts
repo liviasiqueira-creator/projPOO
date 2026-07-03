@@ -20,8 +20,12 @@ export async function login(payload: UserPayload): Promise<LoginResponse> {
   return data
 }
 
-export async function createUser(payload: RegisterPayload) {
-  const { data } = await api.post('/auth/register', payload)
+interface RegisterResponse {
+  accessToken: string
+}
+
+export async function createUser(payload: RegisterPayload): Promise<RegisterResponse> {
+  const { data } = await api.post<RegisterResponse>('/auth/register', payload)
   return data;
 }
 
