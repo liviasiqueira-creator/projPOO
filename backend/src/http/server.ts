@@ -8,12 +8,18 @@ import type { ServiceRepository } from '../domain/repositories/service-repositor
 import type { BarberMembershipRepository } from '../domain/repositories/barber-membership-repository'
 import type { AppointmentRepository } from '../domain/repositories/appointment-repository'
 import type { BarberAvailabilityRepository } from '../domain/repositories/barber-availability-repository'
+import type { LoyaltyProgressRepository } from '../domain/repositories/loyalty-progress-repository'
+import type { LoyaltyRewardRepository } from '../domain/repositories/loyalty-reward-repository'
+import type { BarbershopPromotionRepository } from '../domain/repositories/barbershop-promotion-repository'
 import type { PasswordHasher } from '../application/ports/password-hasher'
 import type { TokenSigner } from '../application/ports/token-signer'
+import type { LoyaltyEngine } from '../application/ports/loyalty-engine'
 import { LoginUseCase } from '../application/use-cases/login'
 import { RegisterUseCase } from '../application/use-cases/register'
 import { CreateBarbershopUseCase } from '../application/use-cases/create-barbershop'
-import { CreateServiceUseCase } from '../application/use-cases/create-service'
+import { EnableServiceUseCase } from '../application/use-cases/enable-service'
+import { UpdateServiceUseCase } from '../application/use-cases/update-service'
+import { RemoveServiceUseCase } from '../application/use-cases/remove-service'
 import { HireBarberUseCase } from '../application/use-cases/hire-barber'
 import { UpdateExclusivityUseCase } from '../application/use-cases/update-exclusivity'
 import { BookAppointmentUseCase } from '../application/use-cases/book-appointment'
@@ -22,6 +28,11 @@ import { UserRole } from '../domain/entities/user'
 import { SetBarberAvailabilityUseCase } from '../application/use-cases/set-barber-availability'
 import { DeleteBarberAvailabilityUseCase } from '../application/use-cases/delete-barber-availability'
 import { GetAvailableSlotsUseCase } from '../application/use-cases/get-available-slots'
+import { ListBarbershopPromotionsUseCase } from '../application/use-cases/list-barbershop-promotions'
+import { ActivatePromotionUseCase } from '../application/use-cases/activate-promotion'
+import { DeactivatePromotionUseCase } from '../application/use-cases/deactivate-promotion'
+import { ListClientRewardsUseCase } from '../application/use-cases/list-client-rewards'
+import type { LoyaltyPromotionType } from '../domain/value-objects/loyalty-rule'
 
 interface ServerDeps {
   userRepository: UserRepository
@@ -30,8 +41,12 @@ interface ServerDeps {
   membershipRepository: BarberMembershipRepository
   appointmentRepository: AppointmentRepository
   availabilityRepository: BarberAvailabilityRepository
+  loyaltyProgressRepository: LoyaltyProgressRepository
+  loyaltyRewardRepository: LoyaltyRewardRepository
+  barbershopPromotionRepository: BarbershopPromotionRepository
   hasher: PasswordHasher
   signer: TokenSigner
+  loyaltyEngine: LoyaltyEngine
 }
 
 export async function buildServer(deps: ServerDeps) {
@@ -234,6 +249,10 @@ export async function buildServer(deps: ServerDeps) {
           city:     { type: 'string' },
           phone:    { type: 'string' },
           logoUrl:  { type: 'string' },
+          serviceNames: {
+            type: 'array',
+            items: { type: 'string', enum: ['Corte', 'Barba', 'Sobrancelha'] },
+          },
         },
       },
       response: {
@@ -274,9 +293,10 @@ export async function buildServer(deps: ServerDeps) {
       city?: string
       phone?: string
       logoUrl?: string
+      serviceNames?: string[]
     }
 
-    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository, deps.userRepository)
+    const useCase = new CreateBarbershopUseCase(deps.barbershopRepository, deps.userRepository, deps.serviceRepository)
     try {
       const result = await useCase.execute({ ...body, ownerUserId })
       return reply.status(201).send(result)
@@ -347,7 +367,7 @@ export async function buildServer(deps: ServerDeps) {
 
   server.post('/barbershops/:barbershopId/services', {
     schema: {
-      summary: 'Cadastrar serviço em uma barbearia',
+      summary: 'Habilitar um serviço do catálogo fixo em uma barbearia',
       tags: ['Barbershops'],
       security: [{ bearerAuth: [] }],
       params: {
@@ -359,12 +379,9 @@ export async function buildServer(deps: ServerDeps) {
       },
       body: {
         type: 'object',
-        required: ['name', 'durationMinutes', 'basePrice'],
+        required: ['name'],
         properties: {
-          name:            { type: 'string', minLength: 1 },
-          durationMinutes: { type: 'number', minimum: 1 },
-          basePrice:       { type: 'number', minimum: 0 },
-          description:     { type: 'string' },
+          name: { type: 'string', enum: ['Corte', 'Barba', 'Sobrancelha'] },
         },
       },
       response: {
@@ -380,6 +397,7 @@ export async function buildServer(deps: ServerDeps) {
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
         404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
       },
     },
   }, async (request, reply) => {
@@ -394,20 +412,110 @@ export async function buildServer(deps: ServerDeps) {
     }
 
     const { barbershopId } = request.params as { barbershopId: string }
-    const body = request.body as {
-      name: string
-      durationMinutes: number
-      basePrice: number
-      description?: string
-    }
+    const { name } = request.body as { name: string }
 
-    const useCase = new CreateServiceUseCase(deps.serviceRepository, deps.barbershopRepository)
+    const useCase = new EnableServiceUseCase(deps.serviceRepository, deps.barbershopRepository)
     try {
-      const result = await useCase.execute({ barbershopId, ...body })
+      const result = await useCase.execute({ barbershopId, name })
       return reply.status(201).send(result)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create service.'
-      return reply.status(404).send({ error: message })
+      const message = err instanceof Error ? err.message : 'Failed to enable service.'
+      const status = message.includes('not found') ? 404 : 409
+      return reply.status(status).send({ error: message })
+    }
+  })
+
+  server.put('/barbershops/:barbershopId/services/:serviceId', {
+    schema: {
+      summary: 'Atualizar duração/preço de um serviço (o nome não é editável)',
+      tags: ['Barbershops'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'serviceId'],
+        properties: {
+          barbershopId: { type: 'string' },
+          serviceId:    { type: 'string' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['durationMinutes', 'basePrice'],
+        properties: {
+          durationMinutes: { type: 'number', minimum: 1 },
+          basePrice:       { type: 'number', minimum: 0 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            id:              { type: 'string' },
+            barbershopId:    { type: 'string' },
+            name:            { type: 'string' },
+            durationMinutes: { type: 'number' },
+            basePrice:       { type: 'number' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barbershopId, serviceId } = request.params as { barbershopId: string; serviceId: string }
+    const body = request.body as { durationMinutes: number; basePrice: number }
+
+    const useCase = new UpdateServiceUseCase(deps.serviceRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, serviceId, ...body })
+      return reply.status(200).send(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update service.'
+      const status = message.includes('not found') || message.includes('not belong') ? 404 : 409
+      return reply.status(status).send({ error: message })
+    }
+  })
+
+  server.delete('/barbershops/:barbershopId/services/:serviceId', {
+    schema: {
+      summary: 'Remover (desabilitar) um serviço da barbearia',
+      tags: ['Barbershops'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'serviceId'],
+        properties: {
+          barbershopId: { type: 'string' },
+          serviceId:    { type: 'string' },
+        },
+      },
+      response: {
+        204: { type: 'null' },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    try { await deps.signer.verify(auth.slice(7)) } catch { return reply.status(401).send({ error: 'Invalid token' }) }
+
+    const { barbershopId, serviceId } = request.params as { barbershopId: string; serviceId: string }
+
+    const useCase = new RemoveServiceUseCase(deps.serviceRepository)
+    try {
+      await useCase.execute({ barbershopId, serviceId })
+      return reply.status(204).send()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove service.'
+      const status = message.includes('not found') || message.includes('not belong') ? 404 : 409
+      return reply.status(status).send({ error: message })
     }
   })
 
@@ -664,10 +772,11 @@ export async function buildServer(deps: ServerDeps) {
         type: 'object',
         required: ['barbershopId', 'barberUserId', 'serviceId', 'scheduledAt'],
         properties: {
-          barbershopId: { type: 'string' },
-          barberUserId: { type: 'string' },
-          serviceId:    { type: 'string' },
-          scheduledAt:  { type: 'string', format: 'date-time' },
+          barbershopId:    { type: 'string' },
+          barberUserId:    { type: 'string' },
+          serviceId:       { type: 'string' },
+          scheduledAt:     { type: 'string', format: 'date-time' },
+          redeemRewardId:  { type: 'string' },
         },
       },
       response: {
@@ -684,6 +793,7 @@ export async function buildServer(deps: ServerDeps) {
             durationMinutes: { type: 'number' },
             priceSnapshot:   { type: 'number' },
             status:          { type: 'string' },
+            isRedemption:    { type: 'boolean' },
           },
         },
         401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -707,9 +817,12 @@ export async function buildServer(deps: ServerDeps) {
       barberUserId: string
       serviceId: string
       scheduledAt: string
+      redeemRewardId?: string
     }
 
-    const useCase = new BookAppointmentUseCase(deps.appointmentRepository, deps.serviceRepository, deps.membershipRepository)
+    const useCase = new BookAppointmentUseCase(
+      deps.appointmentRepository, deps.serviceRepository, deps.membershipRepository, deps.loyaltyRewardRepository,
+    )
     try {
       const result = await useCase.execute({ ...body, clientUserId, scheduledAt: new Date(body.scheduledAt) })
       return reply.status(201).send(result)
@@ -827,7 +940,7 @@ export async function buildServer(deps: ServerDeps) {
     const { appointmentId } = request.params as { appointmentId: string }
     const { status } = request.body as { status: 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' }
 
-    const useCase = new UpdateAppointmentStatusUseCase(deps.appointmentRepository)
+    const useCase = new UpdateAppointmentStatusUseCase(deps.appointmentRepository, deps.loyaltyEngine)
     try {
       const result = await useCase.execute({ appointmentId, status })
       return reply.status(200).send(result)
@@ -979,6 +1092,197 @@ export async function buildServer(deps: ServerDeps) {
       const message = err instanceof Error ? err.message : 'Failed to get available slots.'
       return reply.status(404).send({ error: message })
     }
+  })
+
+  server.get('/barbershops/:barbershopId/promotions', {
+    schema: {
+      summary: 'Listar as promoções de fidelidade de uma barbearia',
+      tags: ['Promotions'],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: { barbershopId: { type: 'string' } },
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type:        { type: 'string' },
+              active:      { type: 'boolean' },
+              activatedAt: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
+    const { barbershopId } = request.params as { barbershopId: string }
+    const useCase = new ListBarbershopPromotionsUseCase(deps.barbershopPromotionRepository)
+    const result = await useCase.execute({ barbershopId })
+    return result.map((p) => ({ type: p.type, active: p.active, activatedAt: p.activatedAt?.toISOString() }))
+  })
+
+  server.patch('/barbershops/:barbershopId/promotions/:type/activate', {
+    schema: {
+      summary: 'Ativar uma promoção de fidelidade',
+      tags: ['Promotions'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'type'],
+        properties: {
+          barbershopId: { type: 'string' },
+          type:         { type: 'string', enum: ['barba_gratis', 'corte_gratis'] },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            type:        { type: 'string' },
+            active:      { type: 'boolean' },
+            activatedAt: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    let ownerUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      ownerUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const { barbershopId, type } = request.params as { barbershopId: string; type: LoyaltyPromotionType }
+    const barbershop = await deps.barbershopRepository.findById(barbershopId)
+    if (!barbershop) return reply.status(404).send({ error: 'Barbershop not found.' })
+    if (barbershop.ownerUserId !== ownerUserId) return reply.status(403).send({ error: 'Not authorized.' })
+
+    const useCase = new ActivatePromotionUseCase(deps.barbershopPromotionRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, type })
+      return reply.status(200).send({ type: result.type, active: result.active, activatedAt: result.activatedAt?.toISOString() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to activate promotion.'
+      return reply.status(409).send({ error: message })
+    }
+  })
+
+  server.patch('/barbershops/:barbershopId/promotions/:type/deactivate', {
+    schema: {
+      summary: 'Desativar uma promoção de fidelidade (bloqueado nos primeiros 30 dias após ativação)',
+      tags: ['Promotions'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId', 'type'],
+        properties: {
+          barbershopId: { type: 'string' },
+          type:         { type: 'string', enum: ['barba_gratis', 'corte_gratis'] },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            type:        { type: 'string' },
+            active:      { type: 'boolean' },
+            activatedAt: { type: 'string' },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        403: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } },
+        409: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    let ownerUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      ownerUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const { barbershopId, type } = request.params as { barbershopId: string; type: LoyaltyPromotionType }
+    const barbershop = await deps.barbershopRepository.findById(barbershopId)
+    if (!barbershop) return reply.status(404).send({ error: 'Barbershop not found.' })
+    if (barbershop.ownerUserId !== ownerUserId) return reply.status(403).send({ error: 'Not authorized.' })
+
+    const useCase = new DeactivatePromotionUseCase(deps.barbershopPromotionRepository)
+    try {
+      const result = await useCase.execute({ barbershopId, type })
+      return reply.status(200).send({ type: result.type, active: result.active, activatedAt: result.activatedAt?.toISOString() })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to deactivate promotion.'
+      const status = message.includes('not found') ? 404 : 409
+      return reply.status(status).send({ error: message })
+    }
+  })
+
+  server.get('/barbershops/:barbershopId/loyalty/rewards', {
+    schema: {
+      summary: 'Listar as recompensas de fidelidade do cliente autenticado nesta barbearia',
+      tags: ['Promotions'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['barbershopId'],
+        properties: { barbershopId: { type: 'string' } },
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id:          { type: 'string' },
+              type:        { type: 'string' },
+              earnedAt:    { type: 'string' },
+              expiresAt:   { type: 'string' },
+              redeemed:    { type: 'boolean' },
+              redeemedAt:  { type: 'string' },
+            },
+          },
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+      },
+    },
+  }, async (request, reply) => {
+    const auth = request.headers.authorization
+    if (!auth?.startsWith('Bearer ')) return reply.status(401).send({ error: 'Missing token' })
+    let clientUserId: string
+    try {
+      const payload = await deps.signer.verify(auth.slice(7))
+      clientUserId = String(payload['sub'])
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' })
+    }
+
+    const { barbershopId } = request.params as { barbershopId: string }
+    const useCase = new ListClientRewardsUseCase(deps.loyaltyRewardRepository)
+    const result = await useCase.execute({ clientUserId, barbershopId })
+    return result.map((r) => ({
+      id: r.id,
+      type: r.type,
+      earnedAt: r.earnedAt.toISOString(),
+      expiresAt: r.expiresAt.toISOString(),
+      redeemed: r.redeemed,
+      redeemedAt: r.redeemedAt?.toISOString(),
+    }))
   })
 
   return server

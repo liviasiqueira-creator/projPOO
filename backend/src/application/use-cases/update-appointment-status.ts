@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from '../../domain/entities/appointment'
 import type { AppointmentRepository } from '../../domain/repositories/appointment-repository'
+import type { LoyaltyEngine } from '../ports/loyalty-engine'
 
 export type UpdateAppointmentStatusInput = {
   appointmentId: string
@@ -14,6 +15,7 @@ export type UpdateAppointmentStatusOutput = {
 export class UpdateAppointmentStatusUseCase {
   constructor(
     private readonly appointmentRepository: AppointmentRepository,
+    private readonly loyaltyEngine: LoyaltyEngine,
   ) {}
 
   async execute(input: UpdateAppointmentStatusInput): Promise<UpdateAppointmentStatusOutput> {
@@ -22,6 +24,10 @@ export class UpdateAppointmentStatusUseCase {
 
     const updated = appointment.transition(input.status)
     await this.appointmentRepository.update(updated)
+
+    if (updated.status === 'completed') {
+      await this.loyaltyEngine.processCompletedAppointment(updated)
+    }
 
     return { id: updated.id, status: updated.status }
   }

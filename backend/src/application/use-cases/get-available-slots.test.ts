@@ -25,6 +25,7 @@ const block = BarberAvailability.create({
 const makeFakeServiceRepo = (svc?: Service): ServiceRepository => ({
   findById: async (id) => id === svc?.id ? svc : null,
   findByBarbershopId: async () => [],
+  findByBarbershopIdAndName: async () => null,
   save: async () => {},
 })
 

@@ -51,6 +51,7 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
         durationMinutes: appointment.durationMinutes,
         priceSnapshot: appointment.priceSnapshot,
         status: appointment.status,
+        isRedemption: appointment.isRedemption,
       },
       update: { status: appointment.status },
     })
@@ -66,7 +67,7 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
   private toEntity(row: {
     id: string; barbershopId: string; barberUserId: string; clientUserId: string
     serviceId: string; scheduledAt: Date; durationMinutes: number
-    priceSnapshot: number; status: string
+    priceSnapshot: number; status: string; isRedemption: boolean
   }): Appointment {
     return Appointment.restore({
       id: row.id,
@@ -78,6 +79,7 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
       durationMinutes: row.durationMinutes,
       priceSnapshot: row.priceSnapshot,
       status: row.status as AppointmentStatus,
+      isRedemption: row.isRedemption,
     })
   }
 }

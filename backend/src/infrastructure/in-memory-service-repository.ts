@@ -14,6 +14,12 @@ export class InMemoryServiceRepository implements ServiceRepository {
     )
   }
 
+  async findByBarbershopIdAndName(barbershopId: string, name: string): Promise<Service | null> {
+    return [...this.services.values()].find(
+      (s) => s.barbershopId === barbershopId && s.name === name
+    ) ?? null
+  }
+
   async save(service: Service): Promise<void> {
     this.services.set(service.id, service)
   }
